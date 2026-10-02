@@ -119,6 +119,9 @@ class StreamActivity : AppCompatActivity()
 		})[StreamViewModel::class.java]
 
 		viewModel.input.observe(this)
+		lifecycle.addObserver(StreamVisibilityObserver(
+			start = { startStreaming() },
+			stop = { stopStreaming() }))
 
 		binding = ActivityStreamBinding.inflate(layoutInflater)
 		setContentView(binding.root)
@@ -546,7 +549,7 @@ class StreamActivity : AppCompatActivity()
 			{
 				Log.w("StreamActivity", "Could not refresh the PSN token, connecting with the old one", e)
 			}
-			if(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
+			if(lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
 			{
 				session.resume()
 				logInputSetup()
@@ -599,6 +602,11 @@ class StreamActivity : AppCompatActivity()
 	{
 		super.onResume()
 		hideSystemUI()
+	}
+
+	/** Runs while the stream is visible (StreamVisibilityObserver), so a dialog over it only pauses the activity */
+	private fun startStreaming()
+	{
 		filterRenderer?.let { binding.filterSurfaceView.onResume() }
 		if(pretendConnected)
 			stateChanged(StreamStateConnected)
@@ -614,12 +622,11 @@ class StreamActivity : AppCompatActivity()
 		}
 	}
 
-	override fun onPause()
+	private fun stopStreaming()
 	{
-		super.onPause()
 		uiVisibilityHandler.removeCallbacks(statsRunnable)
 		autoReconnect.cancel()
-		// The session ends on pause, and with it the microphone.
+		// The session ends when the stream is hidden, and with it the microphone.
 		overlay.microphoneSwitch.isChecked = false
 		viewModel.session.pause()
 		filterRenderer?.let { binding.filterSurfaceView.onPause() }
