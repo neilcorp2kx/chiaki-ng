@@ -107,6 +107,8 @@ class TouchpadView @JvmOverloads constructor(
 		when(event.actionMasked)
 		{
 			MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+				if(downInSystemGestureArea(event))
+					return true
 				state.startTouch(touchX(event, event.actionIndex), touchY(event, event.actionIndex))?.let {
 					haptics.trigger()
 					val touch = Touch(it, event.getX(event.actionIndex), event.getY(event.actionIndex))
