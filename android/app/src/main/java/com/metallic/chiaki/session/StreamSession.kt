@@ -38,7 +38,10 @@ class StreamSession(
 	private var psnRetried = false
 	/** Text for the retry status, set by the activity */
 	var psnRetryStatus: String = "Trying again…"
-	private val mainHandler = Handler(Looper.getMainLooper())
+	companion object
+	{
+		private const val IN_USE_RETRY_DELAY_MS = 1500L
+	}
 
 	var session: Session? = null
 		private set
@@ -57,6 +60,9 @@ class StreamSession(
 	val lightState: LiveData<Event?> get() = _lightState
 	private val _rumbleState = MutableLiveData<RumbleEvent>(RumbleEvent(0U, 0U))
 	val rumbleState: LiveData<RumbleEvent> get() = _rumbleState
+
+	private val inUseRetry = RemoteInUseRetry()
+	private val mainHandler = Handler(Looper.getMainLooper())
 
 	private var surfaceTexture: SurfaceTexture? = null
 	private var surface: Surface? = null
@@ -93,11 +99,18 @@ class StreamSession(
 
 	fun shutdown()
 	{
+		if(session != null)
+			inUseRetry.sessionStopped()
+		disposeSession()
+		_state.value = StreamStateIdle
+		//surfaceTexture?.release()
+	}
+
+	private fun disposeSession()
+	{
 		session?.stop()
 		session?.dispose()
 		session = null
-		_state.value = StreamStateIdle
-		//surfaceTexture?.release()
 	}
 
 	fun pause()
@@ -115,7 +128,7 @@ class StreamSession(
 		{
 			val session = Session(connectInfo, logManager.createNewFile().file.absolutePath, logVerbose)
 			_state.value = StreamStateConnecting
-			session.eventCallback = this::eventCallback
+			session.eventCallback = { eventCallback(session, it) }
 			session.start()
 			val surface = surface
 			if(surface != null)
@@ -128,7 +141,7 @@ class StreamSession(
 		}
 	}
 
-	private fun eventCallback(event: Event)
+	private fun eventCallback(session: Session, event: Event)
 	{
 		when(event)
 		{
@@ -144,6 +157,11 @@ class StreamSession(
 			}
 			is QuitEvent ->
 			{
+				if(inUseRetry.shouldRetry(event.reason.value))
+				{
+					retryAfterInUse(session)
+					return
+				}
 				if(connectInfo.isPsn && !psnRetried && event.reason.isError
 					&& event.reasonString?.contains("starting the session on the console") == true)
 				{
@@ -190,6 +208,19 @@ class StreamSession(
 	{
 		this.surface = surface
 		session?.setSurface(surface)
+	}
+
+	/** The console still holds our previous session, start again once it let go, still showing as connecting. */
+	private fun retryAfterInUse(quitSession: Session)
+	{
+		mainHandler.postDelayed({
+			// stopped or replaced meanwhile
+			if(session === quitSession)
+			{
+				disposeSession()
+				resume()
+			}
+		}, IN_USE_RETRY_DELAY_MS)
 	}
 
 	fun attachToSurfaceView(surfaceView: SurfaceView)
