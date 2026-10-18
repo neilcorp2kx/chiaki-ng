@@ -27,6 +27,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.rumbleEnabledKey -> preferences.rumbleEnabled
 		preferences.motionEnabledKey -> preferences.motionEnabled
 		preferences.buttonHapticEnabledKey -> preferences.buttonHapticEnabled
+		preferences.videoFilterStatsKey -> preferences.videoFilterStats
 		else -> defValue
 	}
 
@@ -39,6 +40,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 			preferences.rumbleEnabledKey -> preferences.rumbleEnabled = value
 			preferences.motionEnabledKey -> preferences.motionEnabled = value
 			preferences.buttonHapticEnabledKey -> preferences.buttonHapticEnabled = value
+			preferences.videoFilterStatsKey -> preferences.videoFilterStats = value
 		}
 	}
 
@@ -48,6 +50,8 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.fpsKey -> preferences.fps.value
 		preferences.bitrateKey -> preferences.bitrate?.toString() ?: ""
 		preferences.codecKey -> preferences.codec.value
+		preferences.debandKey -> preferences.deband.value
+		preferences.sharpenKey -> preferences.sharpen.value
 		else -> defValue
 	}
 
@@ -70,6 +74,16 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 			{
 				val codec = Preferences.Codec.values().firstOrNull { it.value == value } ?: return
 				preferences.codec = codec
+			}
+			preferences.debandKey ->
+			{
+				val deband = Preferences.Deband.values().firstOrNull { it.value == value } ?: return
+				preferences.deband = deband
+			}
+			preferences.sharpenKey ->
+			{
+				val sharpen = Preferences.Sharpen.values().firstOrNull { it.value == value } ?: return
+				preferences.sharpen = sharpen
 			}
 		}
 	}
@@ -122,6 +136,16 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_codec_key))?.let {
 			it.entryValues = Preferences.codecAll.map { codec -> codec.value }.toTypedArray()
 			it.entries = Preferences.codecAll.map { codec -> getString(codec.title) }.toTypedArray()
+		}
+
+		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_deband_key))?.let {
+			it.entryValues = Preferences.debandAll.map { deband -> deband.value }.toTypedArray()
+			it.entries = Preferences.debandAll.map { deband -> getString(deband.title) }.toTypedArray()
+		}
+
+		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_sharpen_key))?.let {
+			it.entryValues = Preferences.sharpenAll.map { sharpen -> sharpen.value }.toTypedArray()
+			it.entries = Preferences.sharpenAll.map { sharpen -> getString(sharpen.title) }.toTypedArray()
 		}
 
 		val registeredHostsPreference = preferenceScreen.findPreference<Preference>("registered_hosts")

@@ -11,6 +11,7 @@ import com.metallic.chiaki.lib.Codec
 import com.metallic.chiaki.lib.ConnectVideoProfile
 import com.metallic.chiaki.lib.VideoFPSPreset
 import com.metallic.chiaki.lib.VideoResolutionPreset
+import com.metallic.chiaki.stream.VideoFilterSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,6 +40,22 @@ class Preferences(context: Context)
 		CODEC_H265("h265", R.string.preferences_codec_title_h265, com.metallic.chiaki.lib.Codec.CODEC_H265)
 	}
 
+	enum class Deband(val value: String, @StringRes val title: Int, val iterations: Int, val threshold: Float, val radius: Float, val grain: Float)
+	{
+		OFF("off", R.string.preferences_video_filter_off, 0, 0f, 0f, 0f),
+		LOW("low", R.string.preferences_video_filter_low, 1, 0.004f, 12f, 0.75f),
+		MEDIUM("medium", R.string.preferences_video_filter_medium, 2, 0.006f, 16f, 1.0f),
+		HIGH("high", R.string.preferences_video_filter_high, 3, 0.009f, 20f, 1.25f)
+	}
+
+	enum class Sharpen(val value: String, @StringRes val title: Int, val stops: Float?)
+	{
+		OFF("off", R.string.preferences_video_filter_off, null),
+		LOW("low", R.string.preferences_video_filter_low, 1.0f),
+		MEDIUM("medium", R.string.preferences_video_filter_medium, 0.5f),
+		HIGH("high", R.string.preferences_video_filter_high, 0.2f)
+	}
+
 	companion object
 	{
 		val resolutionDefault = Resolution.RES_720P
@@ -47,6 +64,10 @@ class Preferences(context: Context)
 		val fpsAll = FPS.values()
 		val codecDefault = Codec.CODEC_H265
 		val codecAll = Codec.values()
+		val debandDefault = Deband.OFF
+		val debandAll = Deband.values()
+		val sharpenDefault = Sharpen.OFF
+		val sharpenAll = Sharpen.values()
 	}
 
 	private val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -136,5 +157,35 @@ class Preferences(context: Context)
 			it
 		else
 			it.copy(bitrate = bitrate)
+	}
+
+	val debandKey get() = resources.getString(R.string.preferences_deband_key)
+	var deband
+		get() = sharedPreferences.getString(debandKey, debandDefault.value)?.let { value ->
+			Deband.values().firstOrNull { it.value == value }
+		} ?: debandDefault
+		set(value) { sharedPreferences.edit().putString(debandKey, value.value).apply() }
+
+	val sharpenKey get() = resources.getString(R.string.preferences_sharpen_key)
+	var sharpen
+		get() = sharedPreferences.getString(sharpenKey, sharpenDefault.value)?.let { value ->
+			Sharpen.values().firstOrNull { it.value == value }
+		} ?: sharpenDefault
+		set(value) { sharedPreferences.edit().putString(sharpenKey, value.value).apply() }
+
+	val videoFilterStatsKey get() = resources.getString(R.string.preferences_video_filter_stats_key)
+	var videoFilterStats
+		get() = sharedPreferences.getBoolean(videoFilterStatsKey, false)
+		set(value) { sharedPreferences.edit().putBoolean(videoFilterStatsKey, value).apply() }
+
+	val videoFilterSettings get() = deband.let {
+		VideoFilterSettings(
+			debandIterations = it.iterations,
+			debandThreshold = it.threshold,
+			debandRadius = it.radius,
+			debandGrain = it.grain,
+			sharpenStops = sharpen.stops,
+			showStats = videoFilterStats
+		)
 	}
 }

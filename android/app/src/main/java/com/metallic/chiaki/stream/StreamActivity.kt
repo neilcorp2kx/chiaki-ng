@@ -6,6 +6,7 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.app.AlertDialog
 import android.graphics.Matrix
+import android.opengl.GLSurfaceView
 import android.os.*
 import android.view.*
 import android.widget.EditText
@@ -25,6 +26,7 @@ import com.metallic.chiaki.R
 import com.metallic.chiaki.common.Preferences
 import com.metallic.chiaki.common.ext.viewModelFactory
 import com.metallic.chiaki.databinding.ActivityStreamBinding
+import com.metallic.chiaki.lib.Codec
 import com.metallic.chiaki.lib.ConnectInfo
 import com.metallic.chiaki.lib.ConnectVideoProfile
 import com.metallic.chiaki.session.*
@@ -116,7 +118,12 @@ class StreamActivity : AppCompatActivity()
 		}
 
 		//viewModel.session.attachToTextureView(textureView)
-		viewModel.session.attachToSurfaceView(binding.surfaceView)
+		val videoProfile = connectInfo.videoProfile
+		val filterSettings = Preferences(this).videoFilterSettings
+		if(filterSettings.enabled && videoProfile.codec != Codec.CODEC_H265_HDR)
+			attachFilterRenderer(filterSettings)
+		else
+			viewModel.session.attachToSurfaceView(binding.surfaceView)
 		viewModel.session.state.observe(this, Observer { this.stateChanged(it) })
 		adjustStreamViewAspect()
 
@@ -134,6 +141,34 @@ class StreamActivity : AppCompatActivity()
 					vibrator.vibrate(1000)
 			})
 		}
+	}
+
+	private var filterRenderer: VideoFilterRenderer? = null
+
+	private fun attachFilterRenderer(settings: VideoFilterSettings)
+	{
+		val videoProfile = viewModel.session.connectInfo.videoProfile
+		val view = binding.filterSurfaceView
+		binding.surfaceView.isGone = true
+		view.isVisible = true
+		view.setEGLContextClientVersion(3)
+		view.preserveEGLContextOnPause = true
+		// Render at stream resolution, the compositor scales to the view size.
+		view.holder.setFixedSize(videoProfile.width, videoProfile.height)
+		val renderer = VideoFilterRenderer(view, videoProfile.width, videoProfile.height, settings,
+			onSurfaceChanged = { surface, releaseOld ->
+				uiVisibilityHandler.post {
+					viewModel.session.setVideoSurface(surface)
+					releaseOld()
+				}
+			},
+			onStats = { stats ->
+				uiVisibilityHandler.post { binding.filterStatsTextView.text = stats }
+			})
+		view.setRenderer(renderer)
+		view.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+		binding.filterStatsTextView.isVisible = settings.showStats
+		filterRenderer = renderer
 	}
 
 	private var controlsJob: Job? = null
@@ -157,6 +192,7 @@ class StreamActivity : AppCompatActivity()
 	{
 		super.onResume()
 		hideSystemUI()
+		filterRenderer?.let { binding.filterSurfaceView.onResume() }
 		viewModel.session.resume()
 	}
 
@@ -164,12 +200,19 @@ class StreamActivity : AppCompatActivity()
 	{
 		super.onPause()
 		viewModel.session.pause()
+		filterRenderer?.let { binding.filterSurfaceView.onPause() }
 	}
 
 	override fun onDestroy()
 	{
 		super.onDestroy()
 		controlsJob?.cancel()
+		filterRenderer?.let {
+			// The session lives in the view model and may outlive this activity.
+			viewModel.session.setVideoSurface(null)
+			it.release()
+		}
+		filterRenderer = null
 	}
 
 	private fun reconnect()

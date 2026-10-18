@@ -93,6 +93,13 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 		}
 	}
 
+	/** For surfaces that are not owned by a view, such as the video filter renderer's */
+	fun setVideoSurface(surface: Surface?)
+	{
+		this.surface = surface
+		session?.setSurface(surface)
+	}
+
 	fun attachToSurfaceView(surfaceView: SurfaceView)
 	{
 		surfaceView.holder.addCallback(object: SurfaceHolder.Callback {

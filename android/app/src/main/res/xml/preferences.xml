@@ -79,6 +79,25 @@
     </PreferenceCategory>
 
     <PreferenceCategory
+        app:key="category_video_filters"
+        app:title="@string/preferences_category_title_video_filters">
+        <ListPreference
+            app:key="@string/preferences_deband_key"
+            app:title="@string/preferences_deband_title"
+            app:summary="@string/preferences_video_filter_summary"/>
+
+        <ListPreference
+            app:key="@string/preferences_sharpen_key"
+            app:title="@string/preferences_sharpen_title"
+            app:summary="@string/preferences_video_filter_summary"/>
+
+        <SwitchPreference
+            app:key="@string/preferences_video_filter_stats_key"
+            app:title="@string/preferences_video_filter_stats_title"
+            app:summary="@string/preferences_video_filter_stats_summary"/>
+    </PreferenceCategory>
+
+    <PreferenceCategory
         app:key="category_export"
         app:title="@string/preferences_category_title_export">
         <Preference
