@@ -2,6 +2,7 @@
 
 package com.metallic.chiaki.regist
 
+import com.metallic.chiaki.common.ext.padForSystemBars
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
@@ -39,6 +40,7 @@ class RegistExecuteActivity: AppCompatActivity()
 		super.onCreate(savedInstanceState)
 		binding = ActivityRegistExecuteBinding.inflate(layoutInflater)
 		setContentView(binding.root)
+		binding.root.padForSystemBars()
 
 		viewModel = ViewModelProvider(this, viewModelFactory { RegistExecuteViewModel(getDatabase(this)) })
 			.get(RegistExecuteViewModel::class.java)

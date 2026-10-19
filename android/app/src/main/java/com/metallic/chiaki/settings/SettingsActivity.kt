@@ -2,6 +2,7 @@
 
 package com.metallic.chiaki.settings
 
+import com.metallic.chiaki.common.ext.padForSystemBars
 import android.content.res.Resources
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
@@ -25,6 +26,7 @@ class SettingsActivity: AppCompatActivity(), PreferenceFragmentCompat.OnPreferen
 		super.onCreate(savedInstanceState)
 		binding = ActivitySettingsBinding.inflate(layoutInflater)
 		setContentView(binding.root)
+		binding.root.padForSystemBars()
 		title = ""
 		setSupportActionBar(binding.toolbar)
 

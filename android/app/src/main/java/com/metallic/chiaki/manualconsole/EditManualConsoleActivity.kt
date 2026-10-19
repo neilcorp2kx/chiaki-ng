@@ -2,6 +2,7 @@
 
 package com.metallic.chiaki.manualconsole
 
+import com.metallic.chiaki.common.ext.padForSystemBars
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -37,6 +38,7 @@ class EditManualConsoleActivity: AppCompatActivity(), RevealActivity
 		super.onCreate(savedInstanceState)
 		binding = ActivityEditManualBinding.inflate(layoutInflater)
 		setContentView(binding.root)
+		binding.root.padForSystemBars()
 		handleReveal()
 
 		viewModel = ViewModelProvider(this, viewModelFactory {
