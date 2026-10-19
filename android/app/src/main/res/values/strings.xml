@@ -41,7 +41,7 @@
     <string name="action_regist">Register</string>
     <string name="entered_host_invalid">Please enter a valid host name</string>
     <string name="regist_psn_online_id_invalid">Please enter a valid PSN ID</string>
-    <string name="action_psn_login">Sign in with PSN to fill in the Account ID</string>
+    <string name="action_psn_login">Sign in with PSN</string>
     <string name="title_psn_login">Sign in to PSN</string>
     <string name="psn_login_error_title">PSN sign-in failed</string>
     <string name="psn_login_error_no_code">The sign-in did not return an authorization code.</string>
