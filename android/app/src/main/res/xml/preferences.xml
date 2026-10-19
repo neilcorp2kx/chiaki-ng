@@ -13,6 +13,12 @@
             app:fragment="com.metallic.chiaki.settings.SettingsRegisteredHostsFragment"
             app:icon="@drawable/ic_console_simple"/>
 
+        <Preference
+            app:key="psn_account"
+            app:title="@string/preferences_psn_account_title"
+            app:summary="@string/preferences_psn_account_signed_out"
+            app:icon="@drawable/ic_psn_id"/>
+
         <SwitchPreference
             app:key="@string/preferences_swap_cross_moon_key"
             app:title="@string/preferences_swap_cross_moon_title"

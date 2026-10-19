@@ -3,6 +3,7 @@
 package com.metallic.chiaki.common
 
 import com.metallic.chiaki.lib.DiscoveryHost
+import com.metallic.chiaki.lib.PsnDevice
 
 sealed class DisplayHost
 {
@@ -34,6 +35,25 @@ class DiscoveredDisplayHost(
 	override fun hashCode() = 31 * (registeredHost?.hashCode() ?: 0) + discoveredHost.hashCode()
 
 	override fun toString() = "DiscoveredDisplayHost{${registeredHost}, ${discoveredHost}}"
+}
+
+/** A console of the signed-in PSN account, reached through Remote Play over PSN */
+class PsnDisplayHost(
+	override val registeredHost: RegisteredHost?,
+	val device: PsnDevice
+): DisplayHost()
+{
+	override val host get() = ""
+	override val name get() = device.name
+	override val id get() = registeredHost?.serverMac?.toString()
+	override val isPS5 get() = device.ps5
+
+	override fun equals(other: Any?): Boolean =
+		other is PsnDisplayHost && other.device == device && other.registeredHost == registeredHost
+
+	override fun hashCode() = 31 * (registeredHost?.hashCode() ?: 0) + device.hashCode()
+
+	override fun toString() = "PsnDisplayHost{${registeredHost}, ${device}}"
 }
 
 class ManualDisplayHost(

@@ -9,8 +9,10 @@
 #include <chiaki/session.h>
 #include <chiaki/discoveryservice.h>
 #include <chiaki/regist.h>
+#include <chiaki/remote/holepunch.h>
 
 #include <string.h>
+#include <pthread.h>
 #include <linux/in.h>
 #include <linux/in6.h>
 #include <arpa/inet.h>
@@ -156,10 +158,55 @@ typedef struct android_chiaki_session_t
 	jfieldID java_controller_touch_y;
 	jfieldID java_controller_touch_id;
 
+	jmethodID java_session_event_regist_meth;
+	jclass java_target_class;
+	jclass java_regist_host_class;
+	jmethodID java_regist_host_ctor;
+
 	AndroidChiakiVideoDecoder video_decoder;
 	AndroidChiakiAudioDecoder audio_decoder;
 	void *audio_output;
+
+	// Remote Play over PSN: the holepunch steps before chiaki_session_start() block for
+	// several seconds, so they run on psn_thread.
+	ChiakiHolepunchSession holepunch_session;
+	uint8_t psn_duid[32];
+	pthread_t psn_thread;
+	bool psn_thread_running;
+	pthread_mutex_t state_mutex;
+	bool started;
+	bool stop_requested;
 } AndroidChiakiSession;
+
+static jobject create_jni_target(JNIEnv *env, jclass target_class, ChiakiTarget target);
+
+static jobject create_jni_regist_host(JNIEnv *env, jclass target_class, jclass host_class, jmethodID host_ctor, ChiakiRegisteredHost *host)
+{
+	return E->NewObject(env, host_class, host_ctor,
+			create_jni_target(env, target_class, host->target),
+			jnistr_from_ascii(env, host->ap_ssid),
+			jnistr_from_ascii(env, host->ap_bssid),
+			jnistr_from_ascii(env, host->ap_key),
+			jnistr_from_ascii(env, host->ap_name),
+			jnibytearray_create(env, host->server_mac, sizeof(host->server_mac)),
+			jnistr_from_ascii(env, host->server_nickname),
+			jnibytearray_create(env, (const uint8_t *)host->rp_regist_key, sizeof(host->rp_regist_key)),
+			(jint)host->rp_key_type,
+			jnibytearray_create(env, host->rp_key, sizeof(host->rp_key)));
+}
+
+#define REGIST_HOST_CTOR_SIG "(" \
+		"L"BASE_PACKAGE"/Target;" /* target: Target */ \
+		"Ljava/lang/String;" /* apSsid: String */ \
+		"Ljava/lang/String;" /* apBssid: String */ \
+		"Ljava/lang/String;" /* apKey: String */ \
+		"Ljava/lang/String;" /* apName: String */ \
+		"[B" /* serverMac: ByteArray */ \
+		"Ljava/lang/String;" /* serverNickname: String */ \
+		"[B" /* rpRegistKey: ByteArray */ \
+		"I" /* rpKeyType: UInt */ \
+		"[B" /* rpKey: ByteArray */ \
+		")V"
 
 static void android_chiaki_event_cb(ChiakiEvent *event, void *user)
 {
@@ -199,6 +246,17 @@ static void android_chiaki_event_cb(ChiakiEvent *event, void *user)
 							  (jint)event->rumble.left,
 							  (jint)event->rumble.right);
 			break;
+		case CHIAKI_EVENT_REGIST:
+		{
+			jobject java_host = create_jni_regist_host(env, session->java_target_class,
+					session->java_regist_host_class, session->java_regist_host_ctor, &event->host);
+			E->CallVoidMethod(env, session->java_session, session->java_session_event_regist_meth, java_host);
+			E->DeleteLocalRef(env, java_host);
+			break;
+		}
+		case CHIAKI_EVENT_HOLEPUNCH:
+			CHIAKI_LOGI(session->log, "PSN data connection %s", event->data_holepunch.finished ? "established" : "pending");
+			break;
 		default:
 			break;
 	}
@@ -228,8 +286,15 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	jobject connect_video_profile_obj = E->GetObjectField(env, connect_info_obj, E->GetFieldID(env, connect_info_class, "videoProfile", "L"BASE_PACKAGE"/ConnectVideoProfile;"));
 	jclass connect_video_profile_class = E->GetObjectClass(env, connect_video_profile_obj);
 
+	jstring duid_string = E->GetObjectField(env, connect_info_obj, E->GetFieldID(env, connect_info_class, "duid", "Ljava/lang/String;"));
+	jstring psn_token_string = E->GetObjectField(env, connect_info_obj, E->GetFieldID(env, connect_info_class, "psnToken", "Ljava/lang/String;"));
+	jbyteArray psn_account_id_array = E->GetObjectField(env, connect_info_obj, E->GetFieldID(env, connect_info_class, "psnAccountId", "[B"));
+	jboolean auto_regist = E->GetBooleanField(env, connect_info_obj, E->GetFieldID(env, connect_info_class, "autoRegist", "Z"));
+
 	ChiakiConnectInfo connect_info = { 0 };
 	connect_info.ps5 = ps5;
+	ChiakiHolepunchSession holepunch_session = NULL;
+	uint8_t psn_duid[32] = { 0 };
 
 	const char *str_borrow = E->GetStringUTFChars(env, host_string, NULL);
 	connect_info.host = host_str = strdup(str_borrow);
@@ -272,6 +337,39 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 
 	connect_info.video_profile_auto_downgrade = true;
 
+	if(duid_string)
+	{
+		const char *duid = E->GetStringUTFChars(env, duid_string, NULL);
+		bool duid_valid = strlen(duid) == 2 * sizeof(psn_duid);
+		for(size_t i = 0; duid_valid && i < sizeof(psn_duid); i++)
+		{
+			unsigned int byte;
+			if(sscanf(duid + 2 * i, "%2x", &byte) != 1)
+				duid_valid = false;
+			psn_duid[i] = (uint8_t)byte;
+		}
+		E->ReleaseStringUTFChars(env, duid_string, duid);
+		if(!duid_valid || !psn_token_string || !psn_account_id_array
+			|| E->GetArrayLength(env, psn_account_id_array) != sizeof(connect_info.psn_account_id))
+		{
+			CHIAKI_LOGE(log, "PSN connection needs a 64 character duid, a token and an 8 byte account id");
+			err = CHIAKI_ERR_INVALID_DATA;
+			goto beach;
+		}
+		E->GetByteArrayRegion(env, psn_account_id_array, 0, sizeof(connect_info.psn_account_id), (jbyte *)connect_info.psn_account_id);
+		const char *token = E->GetStringUTFChars(env, psn_token_string, NULL);
+		holepunch_session = chiaki_holepunch_session_init(token, log);
+		E->ReleaseStringUTFChars(env, psn_token_string, token);
+		if(!holepunch_session)
+		{
+			CHIAKI_LOGE(log, "Failed to init PSN holepunch session");
+			err = CHIAKI_ERR_UNKNOWN;
+			goto beach;
+		}
+		connect_info.holepunch_session = holepunch_session;
+		connect_info.auto_regist = auto_regist;
+	}
+
 	session = CHIAKI_NEW(AndroidChiakiSession);
 	if(!session)
 	{
@@ -280,6 +378,9 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	}
 	memset(session, 0, sizeof(AndroidChiakiSession));
 	session->log = log;
+	session->holepunch_session = holepunch_session;
+	memcpy(session->psn_duid, psn_duid, sizeof(psn_duid));
+	pthread_mutex_init(&session->state_mutex, NULL);
 	err = android_chiaki_video_decoder_init(&session->video_decoder, log, connect_info.video_profile.width, connect_info.video_profile.height,
 			connect_info.ps5 ? connect_info.video_profile.codec : CHIAKI_CODEC_H264);
 	if(err != CHIAKI_ERR_SUCCESS)
@@ -303,6 +404,8 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	android_chiaki_audio_decoder_set_cb(&session->audio_decoder, android_chiaki_audio_output_settings, android_chiaki_audio_output_frame, session->audio_output);
 
 	err = chiaki_session_init(&session->session, &connect_info, log);
+	// chiaki_session_init() takes ownership of the holepunch session, also when it fails
+	holepunch_session = NULL;
 	if(err != CHIAKI_ERR_SUCCESS)
 	{
 		CHIAKI_LOGE(log, "JNI ChiakiSession failed to init");
@@ -320,6 +423,10 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	session->java_session_event_login_pin_request_meth = E->GetMethodID(env, session->java_session_class, "eventLoginPinRequest", "(Z)V");
 	session->java_session_event_quit_meth = E->GetMethodID(env, session->java_session_class, "eventQuit", "(ILjava/lang/String;)V");
 	session->java_session_event_rumble_meth = E->GetMethodID(env, session->java_session_class, "eventRumble", "(II)V");
+	session->java_session_event_regist_meth = E->GetMethodID(env, session->java_session_class, "eventRegist", "(L"BASE_PACKAGE"/RegistHost;)V");
+	session->java_target_class = E->NewGlobalRef(env, E->FindClass(env, BASE_PACKAGE"/Target"));
+	session->java_regist_host_class = E->NewGlobalRef(env, E->FindClass(env, BASE_PACKAGE"/RegistHost"));
+	session->java_regist_host_ctor = E->GetMethodID(env, session->java_regist_host_class, "<init>", REGIST_HOST_CTOR_SIG);
 
 	jclass controller_state_class = E->FindClass(env, BASE_PACKAGE"/ControllerState");
 	session->java_controller_state_buttons = E->GetFieldID(env, controller_state_class, "buttons", "I");
@@ -354,6 +461,8 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	chiaki_session_set_audio_sink(&session->session, &audio_sink);
 
 beach:
+	if(holepunch_session)
+		chiaki_holepunch_session_fini(holepunch_session);
 	if(!session && log)
 	{
 		android_chiaki_file_log_fini(log);
@@ -377,31 +486,177 @@ JNIEXPORT void JNICALL JNI_FCN(sessionFree)(JNIEnv *env, jobject obj, jlong ptr)
 	android_chiaki_audio_output_free(session->audio_output);
 	E->DeleteGlobalRef(env, session->java_session);
 	E->DeleteGlobalRef(env, session->java_session_class);
+	E->DeleteGlobalRef(env, session->java_target_class);
+	E->DeleteGlobalRef(env, session->java_regist_host_class);
+	pthread_mutex_destroy(&session->state_mutex);
 	CHIAKI_LOGI(session->log, "JNI Session has quit");
 	android_chiaki_file_log_fini(session->log);
 	free(session->log);
 	free(session);
 }
 
+static void android_chiaki_session_send_quit(AndroidChiakiSession *session, ChiakiQuitReason reason, const char *reason_str)
+{
+	ChiakiEvent event = { 0 };
+	event.type = CHIAKI_EVENT_QUIT;
+	event.quit.reason = reason;
+	event.quit.reason_str = reason_str;
+	android_chiaki_event_cb(&event, session);
+}
+
+/** Same steps as the desktop GUI's StreamSession::ConnectPsnConnection() */
+static void *android_chiaki_psn_connect_thread(void *user)
+{
+	AndroidChiakiSession *session = user;
+	ChiakiHolepunchSession hp = session->holepunch_session;
+	ChiakiHolepunchConsoleType console_type = session->session.connect_info.ps5 ? CHIAKI_HOLEPUNCH_CONSOLE_TYPE_PS5 : CHIAKI_HOLEPUNCH_CONSOLE_TYPE_PS4;
+	const char *step = "UPnP discovery";
+	ChiakiErrorCode err = chiaki_holepunch_upnp_discover(hp);
+	if(err != CHIAKI_ERR_SUCCESS)
+		CHIAKI_LOGW(session->log, "PSN UPnP discovery failed, continuing without UPnP");
+	step = "creating the PSN session";
+	err = chiaki_holepunch_session_create(hp);
+	if(err == CHIAKI_ERR_SUCCESS)
+	{
+		step = "creating the connection offer";
+		err = holepunch_session_create_offer(hp);
+	}
+	if(err == CHIAKI_ERR_SUCCESS)
+	{
+		step = "starting the session on the console";
+		err = chiaki_holepunch_session_start(hp, session->psn_duid, console_type);
+	}
+	if(err == CHIAKI_ERR_SUCCESS)
+	{
+		step = "connecting to the console";
+		err = chiaki_holepunch_session_punch_hole(hp, CHIAKI_HOLEPUNCH_PORT_TYPE_CTRL);
+	}
+
+	pthread_mutex_lock(&session->state_mutex);
+	bool stop_requested = session->stop_requested;
+	if(err == CHIAKI_ERR_SUCCESS && !stop_requested)
+	{
+		CHIAKI_LOGI(session->log, "PSN connection established, starting session");
+		err = chiaki_session_start(&session->session);
+		step = "starting the stream";
+		if(err == CHIAKI_ERR_SUCCESS)
+			session->started = true;
+	}
+	pthread_mutex_unlock(&session->state_mutex);
+
+	if(stop_requested)
+		android_chiaki_session_send_quit(session, CHIAKI_QUIT_REASON_STOPPED, NULL);
+	else if(err != CHIAKI_ERR_SUCCESS)
+	{
+		char reason[256];
+		snprintf(reason, sizeof(reason), "PSN connection failed while %s: %s%s", step, chiaki_error_string(err),
+				err == CHIAKI_ERR_HOST_DOWN || err == CHIAKI_ERR_HOST_UNREACH
+					? ". Is the console on or in rest mode, with Remote Play enabled?" : "");
+		CHIAKI_LOGE(session->log, "%s", reason);
+		android_chiaki_session_send_quit(session, CHIAKI_QUIT_REASON_CTRL_CONNECT_FAILED, reason);
+	}
+	return NULL;
+}
+
 JNIEXPORT jint JNICALL JNI_FCN(sessionStart)(JNIEnv *env, jobject obj, jlong ptr)
 {
 	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
 	CHIAKI_LOGI(session->log, "Start JNI Session");
-	return chiaki_session_start(&session->session);
+	if(session->holepunch_session)
+	{
+		if(pthread_create(&session->psn_thread, NULL, android_chiaki_psn_connect_thread, session) != 0)
+			return CHIAKI_ERR_THREAD;
+		session->psn_thread_running = true;
+		return CHIAKI_ERR_SUCCESS;
+	}
+	ChiakiErrorCode err = chiaki_session_start(&session->session);
+	if(err == CHIAKI_ERR_SUCCESS)
+		session->started = true;
+	return err;
 }
 
 JNIEXPORT jint JNICALL JNI_FCN(sessionStop)(JNIEnv *env, jobject obj, jlong ptr)
 {
 	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
 	CHIAKI_LOGI(session->log, "Stop JNI Session");
-	return chiaki_session_stop(&session->session);
+	pthread_mutex_lock(&session->state_mutex);
+	session->stop_requested = true;
+	bool started = session->started;
+	pthread_mutex_unlock(&session->state_mutex);
+	if(started)
+		return chiaki_session_stop(&session->session);
+	if(session->psn_thread_running)
+		chiaki_holepunch_main_thread_cancel(session->holepunch_session, false);
+	return CHIAKI_ERR_SUCCESS;
 }
 
 JNIEXPORT jint JNICALL JNI_FCN(sessionJoin)(JNIEnv *env, jobject obj, jlong ptr)
 {
 	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
 	CHIAKI_LOGI(session->log, "Join JNI Session");
-	return chiaki_session_join(&session->session);
+	if(session->psn_thread_running)
+	{
+		pthread_join(session->psn_thread, NULL);
+		session->psn_thread_running = false;
+	}
+	pthread_mutex_lock(&session->state_mutex);
+	bool started = session->started;
+	pthread_mutex_unlock(&session->state_mutex);
+	if(started)
+	{
+		// The PSN thread may have started the session after a stop request.
+		if(session->stop_requested)
+			chiaki_session_stop(&session->session);
+		return chiaki_session_join(&session->session);
+	}
+	return CHIAKI_ERR_SUCCESS;
+}
+
+JNIEXPORT void JNICALL JNI_FCN(setCaInfo)(JNIEnv *env, jobject obj, jstring path_string)
+{
+	const char *path = path_string ? E->GetStringUTFChars(env, path_string, NULL) : NULL;
+	chiaki_holepunch_set_ca_info(path);
+	if(path)
+		E->ReleaseStringUTFChars(env, path_string, path);
+}
+
+JNIEXPORT jobjectArray JNICALL JNI_FCN(psnListDevices)(JNIEnv *env, jobject obj, jstring token_string)
+{
+	// Called on a Java thread: the JNI log would detach it from the VM, so log to logcat only.
+	ChiakiLog log;
+	android_chiaki_file_log_init(&log, CHIAKI_LOG_ALL & ~CHIAKI_LOG_VERBOSE, NULL);
+	jclass device_class = E->FindClass(env, BASE_PACKAGE"/PsnDevice");
+	jmethodID device_ctor = E->GetMethodID(env, device_class, "<init>", "(Ljava/lang/String;Ljava/lang/String;ZZ)V");
+
+	const char *token = E->GetStringUTFChars(env, token_string, NULL);
+	ChiakiHolepunchDeviceInfo *devices = NULL;
+	size_t count = 0;
+	ChiakiErrorCode err = chiaki_holepunch_list_devices(token, CHIAKI_HOLEPUNCH_CONSOLE_TYPE_PS5, &devices, &count, &log);
+	E->ReleaseStringUTFChars(env, token_string, token);
+
+	jobjectArray result = NULL;
+	if(err == CHIAKI_ERR_SUCCESS)
+	{
+		result = E->NewObjectArray(env, (jsize)count, device_class, NULL);
+		for(size_t i = 0; i < count; i++)
+		{
+			char duid_hex[2 * sizeof(devices[i].device_uid) + 1];
+			for(size_t j = 0; j < sizeof(devices[i].device_uid); j++)
+				snprintf(duid_hex + 2 * j, 3, "%02x", devices[i].device_uid[j]);
+			char name[sizeof(devices[i].device_name) + 1];
+			memcpy(name, devices[i].device_name, sizeof(devices[i].device_name));
+			name[sizeof(devices[i].device_name)] = '\0';
+			jobject device = E->NewObject(env, device_class, device_ctor,
+					jnistr_from_ascii(env, name), E->NewStringUTF(env, duid_hex),
+					(jboolean)(devices[i].type == CHIAKI_HOLEPUNCH_CONSOLE_TYPE_PS5),
+					(jboolean)devices[i].remoteplay_enabled);
+			E->SetObjectArrayElement(env, result, (jsize)i, device);
+			E->DeleteLocalRef(env, device);
+		}
+		chiaki_holepunch_free_device_list(&devices);
+	}
+	android_chiaki_file_log_fini(&log);
+	return result;
 }
 
 JNIEXPORT void JNICALL JNI_FCN(sessionSetSurface)(JNIEnv *env, jobject obj, jlong ptr, jobject surface)
@@ -710,18 +965,8 @@ static void android_chiaki_regist_cb(ChiakiRegistEvent *event, void *user)
 			break;
 		case CHIAKI_REGIST_EVENT_TYPE_FINISHED_SUCCESS:
 		{
-			ChiakiRegisteredHost *host = event->registered_host;
-			jobject java_host = E->NewObject(env, regist->java_regist_host_class, regist->java_regist_host_ctor,
-					create_jni_target(env, regist->java_target_class, host->target),
-					jnistr_from_ascii(env, host->ap_ssid),
-					jnistr_from_ascii(env, host->ap_bssid),
-					jnistr_from_ascii(env, host->ap_key),
-					jnistr_from_ascii(env, host->ap_name),
-					jnibytearray_create(env, host->server_mac, sizeof(host->server_mac)),
-					jnistr_from_ascii(env, host->server_nickname),
-					jnibytearray_create(env, (const uint8_t *)host->rp_regist_key, sizeof(host->rp_regist_key)),
-					(jint)host->rp_key_type,
-					jnibytearray_create(env, host->rp_key, sizeof(host->rp_key)));
+			jobject java_host = create_jni_regist_host(env, regist->java_target_class,
+					regist->java_regist_host_class, regist->java_regist_host_ctor, event->registered_host);
 			java_event = E->NewObject(env, regist->java_regist_event_success_class, regist->java_regist_event_success_ctor, java_host);
 			break;
 		}
@@ -768,18 +1013,7 @@ JNIEXPORT void JNICALL JNI_FCN(registStart)(JNIEnv *env, jobject obj, jobject re
 	regist->java_regist_event_success_ctor = E->GetMethodID(env, regist->java_regist_event_success_class, "<init>", "(L"BASE_PACKAGE"/RegistHost;)V");
 
 	regist->java_regist_host_class = E->NewGlobalRef(env, E->FindClass(env, BASE_PACKAGE"/RegistHost"));
-	regist->java_regist_host_ctor = E->GetMethodID(env, regist->java_regist_host_class, "<init>", "("
-			  "L"BASE_PACKAGE"/Target;" // target: Target
-			  "Ljava/lang/String;" // apSsid: String
-			  "Ljava/lang/String;" // apBssid: String
-			  "Ljava/lang/String;" // apKey: String
-			  "Ljava/lang/String;" // apName: String
-			  "[B" // serverMac: ByteArray
-			  "Ljava/lang/String;" // serverNickname: String
-			  "[B" // rpRegistKey: ByteArray
-			  "I" // rpKeyType: UInt
-			  "[B" // rpKey: ByteArray
-			  ")V");
+	regist->java_regist_host_ctor = E->GetMethodID(env, regist->java_regist_host_class, "<init>", REGIST_HOST_CTOR_SIG);
 
 	jclass regist_info_class = E->GetObjectClass(env, regist_info_obj);
 

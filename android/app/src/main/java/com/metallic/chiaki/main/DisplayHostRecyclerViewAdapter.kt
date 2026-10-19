@@ -16,6 +16,7 @@ import com.metallic.chiaki.R
 import com.metallic.chiaki.common.DiscoveredDisplayHost
 import com.metallic.chiaki.common.DisplayHost
 import com.metallic.chiaki.common.ManualDisplayHost
+import com.metallic.chiaki.common.PsnDisplayHost
 import com.metallic.chiaki.common.ext.inflate
 import com.metallic.chiaki.databinding.ItemDisplayHostBinding
 import com.metallic.chiaki.lib.DiscoveryHost
@@ -56,10 +57,16 @@ class DisplayHostRecyclerViewAdapter(
 		val host = hosts[position]
 		holder.binding.also {
 			it.nameTextView.text = host.name
-			it.hostTextView.text = context.getString(R.string.display_host_host, host.host)
+			it.hostTextView.text =
+				if(host is PsnDisplayHost)
+					context.getString(R.string.display_host_psn)
+				else
+					context.getString(R.string.display_host_host, host.host)
 			val id = host.id
 			it.idTextView.text =
-				if(id != null)
+				if(host is PsnDisplayHost && !host.isRegistered)
+					context.getString(R.string.display_host_psn_unregistered)
+				else if(id != null)
 					context.getString(
 						if(host.isRegistered)
 							R.string.display_host_id_registered
@@ -90,7 +97,7 @@ class DisplayHostRecyclerViewAdapter(
 			)
 			it.root.setOnClickListener { clickCallback(host) }
 
-			val canWakeup = host.registeredHost != null
+			val canWakeup = host.registeredHost != null && host !is PsnDisplayHost
 			val canEditDelete = host is ManualDisplayHost
 			if(canWakeup || canEditDelete)
 			{

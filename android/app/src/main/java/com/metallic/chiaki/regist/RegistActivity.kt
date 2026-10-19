@@ -2,6 +2,7 @@
 
 package com.metallic.chiaki.regist
 
+import com.metallic.chiaki.common.ext.padForSystemBars
 import android.content.Intent
 import android.os.Bundle
 import android.util.Base64
@@ -13,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.metallic.chiaki.R
+import com.metallic.chiaki.common.PsnAccount
 import com.metallic.chiaki.common.ext.RevealActivity
 import com.metallic.chiaki.databinding.ActivityRegistBinding
 import com.metallic.chiaki.lib.RegistInfo
@@ -53,6 +55,7 @@ class RegistActivity: AppCompatActivity(), RevealActivity
 		super.onCreate(savedInstanceState)
 		binding = ActivityRegistBinding.inflate(layoutInflater)
 		setContentView(binding.root)
+		binding.root.padForSystemBars()
 		handleReveal()
 
 		viewModel = ViewModelProvider(this).get(RegistViewModel::class.java)
@@ -61,6 +64,10 @@ class RegistActivity: AppCompatActivity(), RevealActivity
 		binding.broadcastCheckBox.isChecked = intent.getBooleanExtra(EXTRA_BROADCAST, true)
 
 		binding.registButton.setOnClickListener { doRegist() }
+		PsnAccount.get(this).accountIdBase64?.let {
+			if(binding.psnIdEditText.text.isNullOrEmpty())
+				binding.psnIdEditText.setText(it)
+		}
 		binding.psnLoginButton.setOnClickListener {
 			psnLogin.launch(Intent(this, PsnLoginActivity::class.java))
 		}

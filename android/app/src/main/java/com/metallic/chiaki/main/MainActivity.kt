@@ -2,6 +2,7 @@
 
 package com.metallic.chiaki.main
 
+import com.metallic.chiaki.common.ext.padForSystemBars
 import android.app.ActivityOptions
 import android.content.Intent
 import android.os.Bundle
@@ -12,6 +13,11 @@ import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import android.widget.Toast
+import com.metallic.chiaki.lib.PsnDevice
+import com.metallic.chiaki.regist.PsnLoginActivity
+import kotlinx.coroutines.launch
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.metallic.chiaki.R
@@ -38,6 +44,7 @@ class MainActivity : AppCompatActivity()
 		super.onCreate(savedInstanceState)
 		binding = ActivityMainBinding.inflate(layoutInflater)
 		setContentView(binding.root)
+		binding.root.padForSystemBars()
 
 		title = ""
 		setSupportActionBar(binding.toolbar)
@@ -57,7 +64,7 @@ class MainActivity : AppCompatActivity()
 
 		setupBackNavigation()
 
-		viewModel = ViewModelProvider(this, viewModelFactory { MainViewModel(getDatabase(this), Preferences(this)) })
+		viewModel = ViewModelProvider(this, viewModelFactory { MainViewModel(getDatabase(this), Preferences(this), PsnAccount.get(this)) })
 			.get(MainViewModel::class.java)
 
 		val recyclerViewAdapter = DisplayHostRecyclerViewAdapter(this::hostTriggered, this::wakeupHost, this::editHost, this::deleteHost)
@@ -69,6 +76,11 @@ class MainActivity : AppCompatActivity()
 			if(top)
 				binding.hostsRecyclerView.scrollToPosition(0)
 			updateEmptyInfo()
+		})
+
+		viewModel.psnError.observe(this, Observer { error ->
+			if(error != null)
+				Toast.makeText(this, getString(R.string.psn_consoles_error, error), Toast.LENGTH_LONG).show()
 		})
 
 		viewModel.discoveryActive.observe(this, Observer { active ->
@@ -100,6 +112,7 @@ class MainActivity : AppCompatActivity()
 	{
 		super.onStart()
 		viewModel.discoveryManager.resume()
+		viewModel.refreshPsnConsoles()
 	}
 
 	override fun onStop()
@@ -174,8 +187,56 @@ class MainActivity : AppCompatActivity()
 		}
 	}
 
+	private fun connectPsn(device: PsnDevice, registeredHost: RegisteredHost?)
+	{
+		val psnAccount = PsnAccount.get(this)
+		lifecycleScope.launch {
+			val token = try
+			{
+				psnAccount.accessToken()
+			}
+			catch(e: PsnAccount.UnauthorizedException)
+			{
+				MaterialAlertDialogBuilder(this@MainActivity)
+					.setMessage(R.string.psn_sign_in_needed)
+					.setPositiveButton(R.string.action_psn_sign_in) { _, _ ->
+						startActivity(Intent(this@MainActivity, PsnLoginActivity::class.java))
+					}
+					.setNegativeButton(android.R.string.cancel) { _, _ -> }
+					.show()
+				return@launch
+			}
+			catch(e: Exception)
+			{
+				Toast.makeText(this@MainActivity, e.message ?: e.toString(), Toast.LENGTH_LONG).show()
+				return@launch
+			}
+			// Every PSN connection registers over PSN, so no PIN is needed. Without a stored
+			// registration, register first (autoRegist) to keep the keys for the local network.
+			val connectInfo = ConnectInfo(
+				ps5 = device.ps5,
+				host = "",
+				registKey = registeredHost?.rpRegistKey ?: ByteArray(0x10),
+				morning = registeredHost?.rpKey ?: ByteArray(0x10),
+				videoProfile = Preferences(this@MainActivity).videoProfile,
+				duid = device.duid,
+				psnToken = token,
+				psnAccountId = psnAccount.accountId,
+				autoRegist = registeredHost == null)
+			Intent(this@MainActivity, StreamActivity::class.java).let {
+				it.putExtra(StreamActivity.EXTRA_CONNECT_INFO, connectInfo)
+				startActivity(it)
+			}
+		}
+	}
+
 	private fun hostTriggered(host: DisplayHost)
 	{
+		if(host is PsnDisplayHost)
+		{
+			connectPsn(host.device, host.registeredHost)
+			return
+		}
 		val registeredHost = host.registeredHost
 		if(registeredHost != null)
 		{
@@ -203,6 +264,11 @@ class MainActivity : AppCompatActivity()
 			}
 			else
 				connect()
+		}
+		else if(viewModel.psnDeviceNamed(host.name)?.takeIf { host.isPS5 } != null)
+		{
+			// Signed in to PSN and this console is on the account: register over PSN, no PIN.
+			connectPsn(viewModel.psnDeviceNamed(host.name)!!, null)
 		}
 		else
 		{

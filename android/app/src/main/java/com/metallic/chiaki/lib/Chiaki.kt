@@ -69,8 +69,34 @@ data class ConnectInfo(
 	val host: String,
 	val registKey: ByteArray,
 	val morning: ByteArray,
-	val videoProfile: ConnectVideoProfile
+	val videoProfile: ConnectVideoProfile,
+	/** Remote Play over PSN: console duid (64 hex chars) from psnListDevices(). Null connects to host directly. */
+	val duid: String? = null,
+	/** PSN access token, required with duid */
+	val psnToken: String? = null,
+	/** 8 byte PSN account id, required with duid */
+	val psnAccountId: ByteArray? = null,
+	/** With duid: register the console over PSN (no PIN), send SessionRegistEvent and stop */
+	val autoRegist: Boolean = false
 ): Parcelable
+{
+	val isPsn get() = duid != null
+}
+
+/** A console listed for the signed-in PSN account */
+data class PsnDevice(
+	val name: String,
+	val duid: String,
+	val ps5: Boolean,
+	val remotePlayEnabled: Boolean
+)
+
+/** CA bundle (PEM) for the HTTPS requests of Remote Play over PSN */
+fun setPsnCaInfo(path: String?) = ChiakiNative.setCaInfo(path)
+
+/** Lists the PS5 consoles of the PSN account. Blocks on the network, returns null on failure (details in logcat). */
+fun psnListDevices(accessToken: String): List<PsnDevice>? =
+	ChiakiNative.psnListDevices(accessToken)?.filterNotNull()
 
 private class ChiakiNative
 {
@@ -99,6 +125,8 @@ private class ChiakiNative
 		@JvmStatic external fun registStart(result: CreateResult, registInfo: RegistInfo, javaLog: ChiakiLog, javaRegist: Regist)
 		@JvmStatic external fun registStop(ptr: Long)
 		@JvmStatic external fun registFree(ptr: Long)
+		@JvmStatic external fun setCaInfo(path: String?)
+		@JvmStatic external fun psnListDevices(token: String): Array<PsnDevice?>?
 	}
 }
 
@@ -317,6 +345,8 @@ object ConnectedEvent: Event()
 data class LoginPinRequestEvent(val pinIncorrect: Boolean): Event()
 data class QuitEvent(val reason: QuitReason, val reasonString: String?): Event()
 data class RumbleEvent(val left: UByte, val right: UByte): Event()
+/** The console was registered over PSN (ConnectInfo.autoRegist) */
+data class SessionRegistEvent(val host: RegistHost): Event()
 
 class CreateError(val errorCode: ErrorCode): Exception("Failed to create a native object: $errorCode")
 
@@ -375,6 +405,11 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean)
 	private fun eventRumble(left: Int, right: Int)
 	{
 		event(RumbleEvent(left.toUByte(), right.toUByte()))
+	}
+
+	private fun eventRegist(host: RegistHost)
+	{
+		event(SessionRegistEvent(host))
 	}
 
 	fun setSurface(surface: Surface?)

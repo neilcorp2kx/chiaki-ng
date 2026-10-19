@@ -3,6 +3,8 @@
 package com.metallic.chiaki.session
 
 import android.graphics.SurfaceTexture
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.*
 import androidx.lifecycle.LiveData
@@ -18,8 +20,20 @@ data class StreamStateCreateError(val error: CreateError): StreamState()
 data class StreamStateQuit(val reason: QuitReason, val reasonString: String?): StreamState()
 data class StreamStateLoginPinRequest(val pinIncorrect: Boolean): StreamState()
 
-class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, val logVerbose: Boolean, val input: StreamInput)
+class StreamSession(
+	connectInfo: ConnectInfo,
+	val logManager: LogManager,
+	val logVerbose: Boolean,
+	val input: StreamInput,
+	/** Called on a native thread when the console was registered over PSN */
+	private val onRegistered: ((RegistHost) -> Unit)? = null)
 {
+	/** Changes from an auto-register connection to a stream connection once registered */
+	var connectInfo = connectInfo
+		private set
+	private var registeredOverPsn = false
+	private val mainHandler = Handler(Looper.getMainLooper())
+
 	var session: Session? = null
 		private set
 
@@ -78,12 +92,30 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 		when(event)
 		{
 			is ConnectedEvent -> _state.postValue(StreamStateConnected)
-			is QuitEvent -> _state.postValue(
-				StreamStateQuit(
-					event.reason,
-					event.reasonString
+			is SessionRegistEvent ->
+			{
+				registeredOverPsn = true
+				onRegistered?.invoke(event.host)
+			}
+			is QuitEvent ->
+			{
+				if(connectInfo.autoRegist && registeredOverPsn && !event.reason.isError)
+				{
+					// Registered without a PIN, now connect again to stream.
+					mainHandler.post {
+						shutdown()
+						connectInfo = connectInfo.copy(autoRegist = false)
+						resume()
+					}
+					return
+				}
+				_state.postValue(
+					StreamStateQuit(
+						event.reason,
+						event.reasonString
+					)
 				)
-			)
+			}
 			is LoginPinRequestEvent -> _state.postValue(
 				StreamStateLoginPinRequest(
 					event.pinIncorrect

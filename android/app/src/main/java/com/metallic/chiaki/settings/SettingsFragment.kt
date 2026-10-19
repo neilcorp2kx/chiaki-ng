@@ -13,6 +13,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.preference.*
 import com.metallic.chiaki.R
 import com.metallic.chiaki.common.Preferences
+import com.metallic.chiaki.common.PsnAccount
+import com.metallic.chiaki.regist.PsnLoginActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.metallic.chiaki.common.exportAndShareAllSettings
 import com.metallic.chiaki.common.ext.viewModelFactory
 import com.metallic.chiaki.common.getDatabase
@@ -91,6 +94,42 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 
 class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 {
+	override fun onResume()
+	{
+		super.onResume()
+		updatePsnAccountSummary()
+	}
+
+	private fun updatePsnAccountSummary()
+	{
+		val context = context ?: return
+		val account = PsnAccount.get(context)
+		preferenceScreen?.findPreference<Preference>("psn_account")?.summary =
+			if(account.isSignedIn)
+				getString(R.string.preferences_psn_account_signed_in, account.accountIdBase64)
+			else
+				getString(R.string.preferences_psn_account_signed_out)
+	}
+
+	private fun psnAccountClicked()
+	{
+		val context = context ?: return
+		val account = PsnAccount.get(context)
+		if(!account.isSignedIn)
+		{
+			startActivity(Intent(context, PsnLoginActivity::class.java))
+			return
+		}
+		MaterialAlertDialogBuilder(context)
+			.setMessage(R.string.alert_message_psn_sign_out)
+			.setPositiveButton(R.string.action_psn_sign_out) { _, _ ->
+				account.signOut()
+				updatePsnAccountSummary()
+			}
+			.setNegativeButton(android.R.string.cancel) { _, _ -> }
+			.show()
+	}
+
 	companion object
 	{
 		private const val PICK_SETTINGS_JSON_REQUEST = 1
@@ -152,6 +191,8 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 		viewModel.registeredHostsCount.observe(this, Observer {
 			registeredHostsPreference?.summary = getString(R.string.preferences_registered_hosts_summary, it)
 		})
+
+		preferenceScreen.findPreference<Preference>("psn_account")?.setOnPreferenceClickListener { psnAccountClicked(); true }
 
 		preferenceScreen.findPreference<Preference>(getString(R.string.preferences_export_settings_key))?.setOnPreferenceClickListener { exportSettings(); true }
 		preferenceScreen.findPreference<Preference>(getString(R.string.preferences_import_settings_key))?.setOnPreferenceClickListener { importSettings(); true }

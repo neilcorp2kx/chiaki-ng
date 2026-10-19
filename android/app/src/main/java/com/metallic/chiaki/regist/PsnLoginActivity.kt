@@ -2,12 +2,12 @@
 
 package com.metallic.chiaki.regist
 
+import com.metallic.chiaki.common.ext.padForSystemBars
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
-import android.util.Base64
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
@@ -27,20 +27,13 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.metallic.chiaki.R
-import kotlinx.coroutines.Dispatchers
+import com.metallic.chiaki.common.PsnAccount
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
-import java.net.URLEncoder
 
 /**
  * Signs in to PSN in a WebView and returns the PSN Account ID (8 bytes, base64),
  * so it does not have to be looked up by hand. Same flow as the desktop GUI
- * (gui/src/psnaccountid.cpp). The tokens are only used to read the account ID
- * and are not stored.
+ * (gui/src/psnaccountid.cpp). The tokens are kept in PsnAccount for Remote Play over PSN.
  */
 class PsnLoginActivity: AppCompatActivity()
 {
@@ -50,18 +43,7 @@ class PsnLoginActivity: AppCompatActivity()
 
 		private const val TAG = "PsnLogin"
 
-		// Values from gui/include/psnaccountid.h
-		private const val CLIENT_ID = "ba495a24-818c-472b-b12d-ff231c1b5745"
-		private const val CLIENT_SECRET = "mvaiZkRsAsI1IBkY"
-		private const val REDIRECT_URI = "https://remoteplay.dl.playstation.net/remoteplay/redirect"
-		private const val SCOPE = "psn:clientapp referenceDataService:countryConfig.read pushNotification:webSocket.desktop.connect sessionManager:remotePlaySession.system.update"
-		private const val TOKEN_URL = "https://auth.api.sonyentertainmentnetwork.com/2.0/oauth/token"
-		private val LOGIN_URL = "https://auth.api.sonyentertainmentnetwork.com/2.0/oauth/authorize" +
-				"?service_entity=urn:service-entity:psn&response_type=code" +
-				"&client_id=$CLIENT_ID" +
-				"&redirect_uri=$REDIRECT_URI" +
-				"&scope=${Uri.encode(SCOPE)}" +
-				"&request_locale=en_US&ui=pr&service_logo=ps&layout_type=popup&smcid=remoteplay&prompt=always&PlatformPrivacyWs1=minimal&"
+		private val REDIRECT_URI = PsnAccount.REDIRECT_URI
 	}
 
 	private lateinit var webView: WebView
@@ -124,8 +106,9 @@ class PsnLoginActivity: AppCompatActivity()
 		root.addView(webView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 		root.addView(progressBar, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
 		setContentView(root)
+		root.padForSystemBars()
 
-		webView.loadUrl(LOGIN_URL)
+		webView.loadUrl(PsnAccount.loginUrl())
 	}
 
 	override fun onDestroy()
@@ -157,7 +140,7 @@ class PsnLoginActivity: AppCompatActivity()
 		lifecycleScope.launch {
 			try
 			{
-				val accountId = withContext(Dispatchers.IO) { fetchAccountId(code) }
+				val accountId = PsnAccount.get(this@PsnLoginActivity).signIn(code)
 				setResult(RESULT_OK, Intent().putExtra(EXTRA_ACCOUNT_ID, accountId))
 				finish()
 			}
@@ -168,48 +151,6 @@ class PsnLoginActivity: AppCompatActivity()
 			}
 		}
 		return true
-	}
-
-	private fun fetchAccountId(code: String): String
-	{
-		val body = "grant_type=authorization_code" +
-				"&code=" + URLEncoder.encode(code, "UTF-8") +
-				"&scope=" + URLEncoder.encode(SCOPE, "UTF-8") +
-				"&redirect_uri=" + URLEncoder.encode(REDIRECT_URI, "UTF-8")
-		val token = request(TOKEN_URL, body).getString("access_token")
-		val userId = request("$TOKEN_URL/$token", null).getString("user_id")
-		return accountIdFromUserId(userId)
-	}
-
-	private fun request(url: String, formBody: String?): JSONObject
-	{
-		val connection = URL(url).openConnection() as HttpURLConnection
-		try
-		{
-			connection.connectTimeout = 15000
-			connection.readTimeout = 15000
-			val credentials = Base64.encodeToString("$CLIENT_ID:$CLIENT_SECRET".toByteArray(), Base64.NO_WRAP)
-			connection.setRequestProperty("Authorization", "Basic $credentials")
-			if(formBody != null)
-			{
-				connection.requestMethod = "POST"
-				connection.doOutput = true
-				connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-				connection.outputStream.use { it.write(formBody.toByteArray()) }
-			}
-			else
-				connection.setRequestProperty("Accept", "application/json")
-			val status = connection.responseCode
-			val stream = if(status in 200..299) connection.inputStream else connection.errorStream
-			val text = stream?.bufferedReader()?.use { it.readText() } ?: ""
-			if(status !in 200..299)
-				throw IOException(getString(R.string.psn_login_error_http, status, text.take(200)))
-			return JSONObject(text)
-		}
-		finally
-		{
-			connection.disconnect()
-		}
 	}
 
 	private fun showError(message: String)
@@ -229,12 +170,4 @@ class PsnLoginActivity: AppCompatActivity()
 		CookieManager.getInstance().removeAllCookies(null)
 		WebStorage.getInstance().deleteAllData()
 	}
-}
-
-/** PSN user_id (decimal) to the 8-byte little-endian Account ID in base64, like the desktop GUI */
-fun accountIdFromUserId(userId: String): String
-{
-	val id = userId.trim().toULong()
-	val bytes = ByteArray(8) { i -> (id shr (8 * i)).toByte() }
-	return Base64.encodeToString(bytes, Base64.NO_WRAP)
 }
