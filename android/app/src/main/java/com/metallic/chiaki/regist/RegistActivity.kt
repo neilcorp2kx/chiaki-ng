@@ -7,6 +7,8 @@ import android.os.Bundle
 import android.util.Base64
 import android.view.View
 import android.view.Window
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
@@ -33,6 +35,15 @@ class RegistActivity: AppCompatActivity(), RevealActivity
 	private lateinit var viewModel: RegistViewModel
 	private lateinit var binding: ActivityRegistBinding
 
+	private val psnLogin = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+		val accountId = result.data?.getStringExtra(PsnLoginActivity.EXTRA_ACCOUNT_ID)
+		if(result.resultCode != RESULT_OK || accountId == null)
+			return@registerForActivityResult
+		binding.psnIdEditText.setText(accountId)
+		binding.psnIdEditText.error = null
+		Toast.makeText(this, R.string.psn_login_success, Toast.LENGTH_SHORT).show()
+	}
+
 	override val revealWindow: Window get() = window
 	override val revealIntent: Intent get() = intent
 	override val revealRootLayout: View get() = binding.rootLayout
@@ -50,6 +61,9 @@ class RegistActivity: AppCompatActivity(), RevealActivity
 		binding.broadcastCheckBox.isChecked = intent.getBooleanExtra(EXTRA_BROADCAST, true)
 
 		binding.registButton.setOnClickListener { doRegist() }
+		binding.psnLoginButton.setOnClickListener {
+			psnLogin.launch(Intent(this, PsnLoginActivity::class.java))
+		}
 
 		binding.ps4VersionRadioGroup.check(when(viewModel.ps4Version.value ?: RegistViewModel.ConsoleVersion.PS5) {
 			RegistViewModel.ConsoleVersion.PS5 -> R.id.ps5RadioButton
