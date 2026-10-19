@@ -620,11 +620,25 @@ JNIEXPORT void JNICALL JNI_FCN(setCaInfo)(JNIEnv *env, jobject obj, jstring path
 		E->ReleaseStringUTFChars(env, path_string, path);
 }
 
-JNIEXPORT jobjectArray JNICALL JNI_FCN(psnListDevices)(JNIEnv *env, jobject obj, jstring token_string)
+JNIEXPORT jboolean JNICALL JNI_FCN(psnTlsSelfTest)(JNIEnv *env, jobject obj, jstring host_string)
 {
-	// Called on a Java thread: the JNI log would detach it from the VM, so log to logcat only.
 	ChiakiLog log;
 	android_chiaki_file_log_init(&log, CHIAKI_LOG_ALL & ~CHIAKI_LOG_VERBOSE, NULL);
+	const char *host = E->GetStringUTFChars(env, host_string, NULL);
+	ChiakiErrorCode err = chiaki_holepunch_tls_self_test(host, &log);
+	E->ReleaseStringUTFChars(env, host_string, host);
+	android_chiaki_file_log_fini(&log);
+	return err == CHIAKI_ERR_SUCCESS;
+}
+
+JNIEXPORT jobjectArray JNICALL JNI_FCN(psnListDevices)(JNIEnv *env, jobject obj, jstring token_string, jstring log_file_string)
+{
+	// Called on a Java thread: the JNI log would detach it from the VM, so log to logcat and a file.
+	ChiakiLog log;
+	const char *log_file = log_file_string ? E->GetStringUTFChars(env, log_file_string, NULL) : NULL;
+	android_chiaki_file_log_init(&log, CHIAKI_LOG_ALL & ~CHIAKI_LOG_VERBOSE, log_file);
+	if(log_file)
+		E->ReleaseStringUTFChars(env, log_file_string, log_file);
 	jclass device_class = E->FindClass(env, BASE_PACKAGE"/PsnDevice");
 	jmethodID device_ctor = E->GetMethodID(env, device_class, "<init>", "(Ljava/lang/String;Ljava/lang/String;ZZ)V");
 

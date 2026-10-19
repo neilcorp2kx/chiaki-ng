@@ -7,5 +7,10 @@
             android:exported="true"
             android:screenOrientation="landscape"
             android:theme="@style/Theme.AppCompat.NoActionBar"/>
+        <!-- Debug builds only: checks TLS to PSN servers with the app's CA bundle -->
+        <activity
+            android:name=".stream.PsnTlsTestActivity"
+            android:exported="true"
+            android:theme="@style/Theme.AppCompat.NoActionBar"/>
     </application>
 </manifest>

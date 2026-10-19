@@ -91,12 +91,15 @@ data class PsnDevice(
 	val remotePlayEnabled: Boolean
 )
 
+/** Diagnostic: TLS connection to host like the PSN websocket, incl. chain recovery. Blocks. */
+fun psnTlsSelfTest(host: String) = ChiakiNative.psnTlsSelfTest(host)
+
 /** CA bundle (PEM) for the HTTPS requests of Remote Play over PSN */
 fun setPsnCaInfo(path: String?) = ChiakiNative.setCaInfo(path)
 
 /** Lists the PS5 consoles of the PSN account. Blocks on the network, returns null on failure (details in logcat). */
-fun psnListDevices(accessToken: String): List<PsnDevice>? =
-	ChiakiNative.psnListDevices(accessToken)?.filterNotNull()
+fun psnListDevices(accessToken: String, logFile: String?): List<PsnDevice>? =
+	ChiakiNative.psnListDevices(accessToken, logFile)?.filterNotNull()
 
 private class ChiakiNative
 {
@@ -126,7 +129,8 @@ private class ChiakiNative
 		@JvmStatic external fun registStop(ptr: Long)
 		@JvmStatic external fun registFree(ptr: Long)
 		@JvmStatic external fun setCaInfo(path: String?)
-		@JvmStatic external fun psnListDevices(token: String): Array<PsnDevice?>?
+		@JvmStatic external fun psnTlsSelfTest(host: String): Boolean
+		@JvmStatic external fun psnListDevices(token: String, logFile: String?): Array<PsnDevice?>?
 	}
 }
 

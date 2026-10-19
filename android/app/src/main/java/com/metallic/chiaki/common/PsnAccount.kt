@@ -137,8 +137,17 @@ class PsnAccount private constructor(private val context: Context)
 	suspend fun listConsoles(): List<PsnDevice> = withContext(Dispatchers.IO) {
 		val token = accessToken()
 		ensureCaBundle()
-		psnListDevices(token)?.filter { it.remotePlayEnabled }
-			?: throw IOException("Could not get the console list from PSN")
+		// Keep the log only on failure, as a session log the user can share from Settings.
+		val tmpLog = File(context.cacheDir, "psn_list_devices.log")
+		val devices = psnListDevices(token, tmpLog.absolutePath)
+		if(devices == null)
+		{
+			try { tmpLog.copyTo(LogManager(context).createNewFile().file, overwrite = true) }
+			catch(e: IOException) { }
+			throw IOException("Could not get the console list from PSN (details in Settings → Session Logs)")
+		}
+		tmpLog.delete()
+		devices.filter { it.remotePlayEnabled }
 	}
 
 	/**
