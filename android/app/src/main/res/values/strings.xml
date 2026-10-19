@@ -90,6 +90,8 @@
     <string name="preferences_fps_title">FPS</string>
     <string name="preferences_bitrate_title">Bitrate</string>
     <string name="preferences_codec_title">Codec</string>
+    <string name="preferences_remote_resolution_title">Resolution over PSN</string>
+    <string name="preferences_remote_bitrate_title">Bitrate over PSN</string>
     <string name="preferences_log_verbose_title">Verbose Logging</string>
     <string name="preferences_log_verbose_summary">Warning: This logs a LOT! Don\'t enable for regular use.</string>
     <string name="preferences_resolution_title_360p">360p</string>
@@ -109,8 +111,8 @@
     <string name="preferences_video_filter_low">Low</string>
     <string name="preferences_video_filter_medium">Medium</string>
     <string name="preferences_video_filter_high">High</string>
-    <string name="preferences_video_filter_stats_title">Show Filter Stats</string>
-    <string name="preferences_video_filter_stats_summary">Show frame rate and render time while a video filter is active</string>
+    <string name="preferences_video_filter_stats_title">Show Stream Stats</string>
+    <string name="preferences_video_filter_stats_summary">Show frame rate, bitrate, packet loss and latency during the stream</string>
     <string name="preferences_swap_cross_moon_title">Swap Cross/Moon and Box/Pyramid Buttons</string>
     <string name="preferences_swap_cross_moon_summary">Swap face buttons if default mapping is incorrect (e.g. for 8BitDo controllers)</string>
     <string name="preferences_rumble_enabled_title">Rumble</string>
@@ -146,6 +148,8 @@
     <string name="preferences_fps_key">stream_fps</string>
     <string name="preferences_bitrate_key">stream_bitrate</string>
     <string name="preferences_codec_key">stream_codec</string>
+    <string name="preferences_remote_resolution_key">stream_remote_resolution</string>
+    <string name="preferences_remote_bitrate_key">stream_remote_bitrate</string>
     <string name="preferences_deband_key">stream_deband</string>
     <string name="preferences_sharpen_key">stream_sharpen</string>
     <string name="preferences_video_filter_stats_key">stream_video_filter_stats</string>

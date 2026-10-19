@@ -23,6 +23,8 @@ typedef struct android_chiaki_video_decoder_t
 	int32_t target_width;
 	int32_t target_height;
 	ChiakiCodec target_codec;
+	/** Frames rendered to the surface, for stream stats */
+	volatile uint64_t frames_rendered;
 } AndroidChiakiVideoDecoder;
 
 ChiakiErrorCode android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *decoder, ChiakiLog *log, int32_t target_width, int32_t target_height, ChiakiCodec codec);

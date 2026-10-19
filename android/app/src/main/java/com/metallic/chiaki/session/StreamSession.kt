@@ -52,6 +52,16 @@ class StreamSession(
 		}
 	}
 
+	/** Remote Play over PSN: use a fresh access token for the next connection */
+	fun updatePsnToken(token: String)
+	{
+		if(connectInfo.isPsn)
+			connectInfo = connectInfo.copy(psnToken = token)
+	}
+
+	/** Live stream numbers, null while not connected */
+	fun stats() = session?.stats()
+
 	fun shutdown()
 	{
 		session?.stop()

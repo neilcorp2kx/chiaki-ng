@@ -82,6 +82,17 @@
             app:title="@string/preferences_codec_title"
             app:summary="%s"
             app:icon="@drawable/ic_codec"/>
+
+        <ListPreference
+            app:key="@string/preferences_remote_resolution_key"
+            app:title="@string/preferences_remote_resolution_title"
+            app:summary="%s"
+            app:icon="@drawable/ic_resolution"/>
+
+        <EditTextPreference
+            app:key="@string/preferences_remote_bitrate_key"
+            app:title="@string/preferences_remote_bitrate_title"
+            app:icon="@drawable/ic_bitrate"/>
     </PreferenceCategory>
 
     <PreferenceCategory

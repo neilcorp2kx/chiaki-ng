@@ -196,6 +196,8 @@ static void *android_chiaki_video_decoder_output_thread_func(void *user)
 		if(status >= 0)
 		{
 			AMediaCodec_releaseOutputBuffer(decoder->codec, (size_t)status, info.size != 0);
+			if(info.size != 0)
+				__atomic_add_fetch(&decoder->frames_rendered, 1, __ATOMIC_RELAXED);
 			if(info.flags & AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM)
 			{
 				CHIAKI_LOGI(decoder->log, "AMediaCodec reported EOS");

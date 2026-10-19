@@ -24,6 +24,9 @@ import androidx.lifecycle.*
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.metallic.chiaki.R
 import com.metallic.chiaki.common.Preferences
+import com.metallic.chiaki.common.PsnAccount
+import android.util.Log
+import kotlinx.coroutines.launch
 import com.metallic.chiaki.common.ext.viewModelFactory
 import com.metallic.chiaki.databinding.ActivityStreamBinding
 import com.metallic.chiaki.lib.Codec
@@ -49,6 +52,7 @@ class StreamActivity : AppCompatActivity()
 	{
 		const val EXTRA_CONNECT_INFO = "connect_info"
 		private const val HIDE_UI_TIMEOUT_MS = 2000L
+		private const val STATS_INTERVAL_MS = 1000L
 	}
 
 	private lateinit var viewModel: StreamViewModel
@@ -163,15 +167,72 @@ class StreamActivity : AppCompatActivity()
 				}
 			},
 			onStats = { stats ->
-				uiVisibilityHandler.post { binding.filterStatsTextView.text = stats }
+				uiVisibilityHandler.post { filterStats = stats }
 			})
 		view.setRenderer(renderer)
 		view.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
-		binding.filterStatsTextView.isVisible = settings.showStats
 		filterRenderer = renderer
 	}
 
 	private var controlsJob: Job? = null
+
+	private var filterStats: String? = null
+	private var lastFramesRendered = -1L
+	private var lastStatsTimeMs = 0L
+
+	private val statsRunnable = object: Runnable
+	{
+		override fun run()
+		{
+			updateStreamStats()
+			uiVisibilityHandler.postDelayed(this, STATS_INTERVAL_MS)
+		}
+	}
+
+	private fun updateStreamStats()
+	{
+		val stats = viewModel.session.stats()
+		val now = SystemClock.elapsedRealtime()
+		val lines = mutableListOf<String>()
+		if(stats != null)
+		{
+			val fps = if(lastFramesRendered >= 0 && now > lastStatsTimeMs)
+				(stats.framesRendered - lastFramesRendered) * 1000.0 / (now - lastStatsTimeMs)
+			else
+				0.0
+			lastFramesRendered = stats.framesRendered
+			lastStatsTimeMs = now
+			val profile = viewModel.session.connectInfo.videoProfile
+			lines += String.format("%dx%d · %.0f fps · %.1f Mbit/s · loss %.1f%% · RTT %.0f ms%s",
+				profile.width, profile.height, fps, stats.bitrateMbps, stats.packetLoss * 100.0, stats.rttMs,
+				if(viewModel.session.connectInfo.isPsn) " · PSN" else " · LAN")
+		}
+		filterStats?.let { lines += it }
+		binding.filterStatsTextView.text = lines.joinToString("\n")
+	}
+
+	/** Connects, with a fresh PSN token first for Remote Play over PSN (tokens expire after about an hour) */
+	private fun resumeSession()
+	{
+		val session = viewModel.session
+		if(!session.connectInfo.isPsn)
+		{
+			session.resume()
+			return
+		}
+		lifecycleScope.launch {
+			try
+			{
+				session.updatePsnToken(PsnAccount.get(this@StreamActivity).accessToken())
+			}
+			catch(e: Exception)
+			{
+				Log.w("StreamActivity", "Could not refresh the PSN token, connecting with the old one", e)
+			}
+			if(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
+				session.resume()
+		}
+	}
 
 	override fun onAttachFragment(fragment: Fragment)
 	{
@@ -193,12 +254,19 @@ class StreamActivity : AppCompatActivity()
 		super.onResume()
 		hideSystemUI()
 		filterRenderer?.let { binding.filterSurfaceView.onResume() }
-		viewModel.session.resume()
+		resumeSession()
+		if(Preferences(this).videoFilterStats)
+		{
+			binding.filterStatsTextView.isVisible = true
+			lastFramesRendered = -1L
+			uiVisibilityHandler.post(statsRunnable)
+		}
 	}
 
 	override fun onPause()
 	{
 		super.onPause()
+		uiVisibilityHandler.removeCallbacks(statsRunnable)
 		viewModel.session.pause()
 		filterRenderer?.let { binding.filterSurfaceView.onPause() }
 	}
@@ -218,7 +286,7 @@ class StreamActivity : AppCompatActivity()
 	private fun reconnect()
 	{
 		viewModel.session.shutdown()
-		viewModel.session.resume()
+		resumeSession()
 	}
 
 	private val hideSystemUIRunnable = Runnable { hideSystemUI() }

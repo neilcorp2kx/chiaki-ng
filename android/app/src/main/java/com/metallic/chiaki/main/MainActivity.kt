@@ -218,7 +218,7 @@ class MainActivity : AppCompatActivity()
 				host = "",
 				registKey = registeredHost?.rpRegistKey ?: ByteArray(0x10),
 				morning = registeredHost?.rpKey ?: ByteArray(0x10),
-				videoProfile = Preferences(this@MainActivity).videoProfile,
+				videoProfile = Preferences(this@MainActivity).remoteVideoProfile,
 				duid = device.duid,
 				psnToken = token,
 				psnAccountId = psnAccount.accountId,

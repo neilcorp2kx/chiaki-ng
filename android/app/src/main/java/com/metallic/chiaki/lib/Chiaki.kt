@@ -129,6 +129,7 @@ private class ChiakiNative
 		@JvmStatic external fun registStop(ptr: Long)
 		@JvmStatic external fun registFree(ptr: Long)
 		@JvmStatic external fun setCaInfo(path: String?)
+		@JvmStatic external fun sessionGetStats(ptr: Long): DoubleArray
 		@JvmStatic external fun psnTlsSelfTest(host: String): Boolean
 		@JvmStatic external fun psnListDevices(token: String, logFile: String?): Array<PsnDevice?>?
 	}
@@ -414,6 +415,18 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean)
 	private fun eventRegist(host: RegistHost)
 	{
 		event(SessionRegistEvent(host))
+	}
+
+	/** Live numbers from the stream, read from any thread */
+	data class Stats(val bitrateMbps: Double, val packetLoss: Double, val rttMs: Double, val framesRendered: Long)
+
+	fun stats(): Stats?
+	{
+		val ptr = nativePtr
+		if(ptr == 0L)
+			return null
+		val s = ChiakiNative.sessionGetStats(ptr)
+		return Stats(s[0], s[1], s[2], s[3].toLong())
 	}
 
 	fun setSurface(surface: Surface?)

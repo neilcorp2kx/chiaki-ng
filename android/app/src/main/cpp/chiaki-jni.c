@@ -612,6 +612,21 @@ JNIEXPORT jint JNICALL JNI_FCN(sessionJoin)(JNIEnv *env, jobject obj, jlong ptr)
 	return CHIAKI_ERR_SUCCESS;
 }
 
+/** [measured bitrate Mbit/s, packet loss 0-1, RTT ms, frames rendered so far] */
+JNIEXPORT jdoubleArray JNICALL JNI_FCN(sessionGetStats)(JNIEnv *env, jobject obj, jlong ptr)
+{
+	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
+	jdouble stats[4] = {
+		session->session.stream_connection.measured_bitrate,
+		session->session.stream_connection.congestion_control.packet_loss,
+		session->session.rtt_us / 1000.0,
+		(jdouble)__atomic_load_n(&session->video_decoder.frames_rendered, __ATOMIC_RELAXED)
+	};
+	jdoubleArray result = E->NewDoubleArray(env, 4);
+	E->SetDoubleArrayRegion(env, result, 0, 4, stats);
+	return result;
+}
+
 JNIEXPORT void JNICALL JNI_FCN(setCaInfo)(JNIEnv *env, jobject obj, jstring path_string)
 {
 	const char *path = path_string ? E->GetStringUTFChars(env, path_string, NULL) : NULL;

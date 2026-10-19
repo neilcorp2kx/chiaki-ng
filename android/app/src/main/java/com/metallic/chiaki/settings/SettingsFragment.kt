@@ -10,6 +10,7 @@ import android.text.InputType
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.preference.*
 import com.metallic.chiaki.R
 import com.metallic.chiaki.common.Preferences
@@ -52,6 +53,8 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.resolutionKey -> preferences.resolution.value
 		preferences.fpsKey -> preferences.fps.value
 		preferences.bitrateKey -> preferences.bitrate?.toString() ?: ""
+		preferences.remoteResolutionKey -> preferences.remoteResolution.value
+		preferences.remoteBitrateKey -> preferences.remoteBitrate?.toString() ?: ""
 		preferences.codecKey -> preferences.codec.value
 		preferences.debandKey -> preferences.deband.value
 		preferences.sharpenKey -> preferences.sharpen.value
@@ -73,6 +76,12 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 				preferences.fps = fps
 			}
 			preferences.bitrateKey -> preferences.bitrate = value?.toIntOrNull()
+			preferences.remoteResolutionKey ->
+			{
+				val resolution = Preferences.Resolution.values().firstOrNull { it.value == value } ?: return
+				preferences.remoteResolution = resolution
+			}
+			preferences.remoteBitrateKey -> preferences.remoteBitrate = value?.toIntOrNull()
 			preferences.codecKey ->
 			{
 				val codec = Preferences.Codec.values().firstOrNull { it.value == value } ?: return
@@ -171,6 +180,29 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 		viewModel.bitrateAuto.observe(this, Observer {
 			bitratePreference?.summaryProvider = bitrateSummaryProvider
 		})
+
+		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_remote_resolution_key))?.let {
+			it.entryValues = Preferences.resolutionAll.map { res -> res.value }.toTypedArray()
+			it.entries = Preferences.resolutionAll.map { res -> getString(res.title) }.toTypedArray()
+		}
+
+		val remoteBitratePreference = preferenceScreen.findPreference<EditTextPreference>(getString(R.string.preferences_remote_bitrate_key))
+		val remoteBitrateSummaryProvider = Preference.SummaryProvider<EditTextPreference> {
+			preferences.remoteBitrate?.toString() ?: getString(R.string.preferences_bitrate_auto, preferences.remoteBitrateAuto)
+		}
+		remoteBitratePreference?.let {
+			it.summaryProvider = remoteBitrateSummaryProvider
+			it.setOnBindEditTextListener { editText ->
+				editText.hint = getString(R.string.preferences_bitrate_auto, preferences.remoteBitrateAuto)
+				editText.inputType = InputType.TYPE_CLASS_NUMBER
+				editText.setText(preferences.remoteBitrate?.toString() ?: "")
+			}
+		}
+		lifecycleScope.launch {
+			preferences.remoteBitrateAutoFlow.collect {
+				remoteBitratePreference?.summaryProvider = remoteBitrateSummaryProvider
+			}
+		}
 
 		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_codec_key))?.let {
 			it.entryValues = Preferences.codecAll.map { codec -> codec.value }.toTypedArray()

@@ -75,6 +75,7 @@ class Preferences(context: Context)
 		when(key)
 		{
 			resolutionKey -> _bitrateAutoFlow.value = bitrateAuto
+			remoteResolutionKey -> _remoteBitrateAutoFlow.value = remoteBitrateAuto
 		}
 	}.also { sharedPreferences.registerOnSharedPreferenceChangeListener(it) }
 
@@ -134,7 +135,7 @@ class Preferences(context: Context)
 		}  ?: fpsDefault
 		set(value) { sharedPreferences.edit().putString(fpsKey, value.value).apply() }
 
-	fun validateBitrate(bitrate: Int) = max(2000, min(50000, bitrate))
+	fun validateBitrate(bitrate: Int) = max(2000, min(100000, bitrate))
 	val bitrateKey get() = resources.getString(R.string.preferences_bitrate_key)
 	var bitrate
 		get() = sharedPreferences.getInt(bitrateKey, 0).let { if(it == 0) null else validateBitrate(it) }
@@ -153,6 +154,32 @@ class Preferences(context: Context)
 	private val videoProfileDefaultBitrate get() = ConnectVideoProfile.preset(resolution.preset, fps.preset, codec.codec)
 	val videoProfile get() = videoProfileDefaultBitrate.let {
 		val bitrate = bitrate
+		if(bitrate == null)
+			it
+		else
+			it.copy(bitrate = bitrate)
+	}
+
+	// Remote Play over PSN gets its own resolution and bitrate, like the desktop GUI's
+	// local/remote settings: mobile data usually needs less than the home network.
+	val remoteResolutionKey get() = resources.getString(R.string.preferences_remote_resolution_key)
+	var remoteResolution
+		get() = sharedPreferences.getString(remoteResolutionKey, null)?.let { value ->
+			Resolution.values().firstOrNull { it.value == value }
+		} ?: resolution
+		set(value) { sharedPreferences.edit().putString(remoteResolutionKey, value.value).apply() }
+
+	val remoteBitrateKey get() = resources.getString(R.string.preferences_remote_bitrate_key)
+	var remoteBitrate
+		get() = sharedPreferences.getInt(remoteBitrateKey, 0).let { if(it == 0) null else validateBitrate(it) }
+		set(value) { sharedPreferences.edit().putInt(remoteBitrateKey, if(value != null) validateBitrate(value) else 0).apply() }
+	val remoteBitrateAuto get() = remoteVideoProfileDefaultBitrate.bitrate
+	private val _remoteBitrateAutoFlow by lazy { MutableStateFlow(remoteBitrateAuto) }
+	val remoteBitrateAutoFlow: StateFlow<Int> get() = _remoteBitrateAutoFlow.asStateFlow()
+
+	private val remoteVideoProfileDefaultBitrate get() = ConnectVideoProfile.preset(remoteResolution.preset, fps.preset, codec.codec)
+	val remoteVideoProfile get() = remoteVideoProfileDefaultBitrate.let {
+		val bitrate = remoteBitrate
 		if(bitrate == null)
 			it
 		else
