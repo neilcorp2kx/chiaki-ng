@@ -178,6 +178,12 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_holepunch_generate_client_device_uid(
 CHIAKI_EXPORT void chiaki_holepunch_set_ca_info(const char *path);
 
 /**
+ * Diagnostic: open a TLS connection to host the way the PSN websocket does,
+ * including certificate chain recovery. Returns CHIAKI_ERR_SUCCESS if it verifies.
+ */
+CHIAKI_EXPORT ChiakiErrorCode chiaki_holepunch_tls_self_test(const char *host, ChiakiLog *log);
+
+/**
  * Initialize a holepunching session.
  *
  * **IMPORTANT**: The OAuth2 token must fulfill the following requirements:
