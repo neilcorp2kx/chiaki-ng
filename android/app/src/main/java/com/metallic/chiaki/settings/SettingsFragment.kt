@@ -32,6 +32,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.motionEnabledKey -> preferences.motionEnabled
 		preferences.buttonHapticEnabledKey -> preferences.buttonHapticEnabled
 		preferences.videoFilterStatsKey -> preferences.videoFilterStats
+		preferences.keyboardEnabledKey -> preferences.keyboardEnabled
 		else -> defValue
 	}
 
@@ -45,6 +46,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 			preferences.motionEnabledKey -> preferences.motionEnabled = value
 			preferences.buttonHapticEnabledKey -> preferences.buttonHapticEnabled = value
 			preferences.videoFilterStatsKey -> preferences.videoFilterStats = value
+			preferences.keyboardEnabledKey -> preferences.keyboardEnabled = value
 		}
 	}
 
@@ -57,6 +59,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.remoteBitrateKey -> preferences.remoteBitrate?.toString() ?: ""
 		preferences.codecKey -> preferences.codec.value
 		preferences.debandKey -> preferences.deband.value
+		preferences.leaveActionKey -> preferences.leaveAction.value
 		preferences.sharpenKey -> preferences.sharpen.value
 		else -> defValue
 	}
@@ -86,6 +89,11 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 			{
 				val codec = Preferences.Codec.values().firstOrNull { it.value == value } ?: return
 				preferences.codec = codec
+			}
+			preferences.leaveActionKey ->
+			{
+				val action = Preferences.LeaveAction.values().firstOrNull { it.value == value } ?: return
+				preferences.leaveAction = action
 			}
 			preferences.debandKey ->
 			{
@@ -207,6 +215,11 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_codec_key))?.let {
 			it.entryValues = Preferences.codecAll.map { codec -> codec.value }.toTypedArray()
 			it.entries = Preferences.codecAll.map { codec -> getString(codec.title) }.toTypedArray()
+		}
+
+		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_leave_action_key))?.let {
+			it.entryValues = Preferences.leaveActionAll.map { action -> action.value }.toTypedArray()
+			it.entries = Preferences.leaveActionAll.map { action -> getString(action.title) }.toTypedArray()
 		}
 
 		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_deband_key))?.let {

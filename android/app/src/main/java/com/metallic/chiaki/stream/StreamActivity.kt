@@ -26,10 +26,12 @@ import com.metallic.chiaki.R
 import com.metallic.chiaki.common.Preferences
 import com.metallic.chiaki.common.PsnAccount
 import android.util.Log
+import androidx.activity.addCallback
 import kotlinx.coroutines.launch
 import com.metallic.chiaki.common.ext.viewModelFactory
 import com.metallic.chiaki.databinding.ActivityStreamBinding
 import com.metallic.chiaki.lib.Codec
+import com.metallic.chiaki.lib.KeyboardEvent
 import com.metallic.chiaki.lib.ConnectInfo
 import com.metallic.chiaki.lib.ConnectVideoProfile
 import com.metallic.chiaki.session.*
@@ -129,6 +131,8 @@ class StreamActivity : AppCompatActivity()
 		else
 			viewModel.session.attachToSurfaceView(binding.surfaceView)
 		viewModel.session.state.observe(this, Observer { this.stateChanged(it) })
+		viewModel.session.keyboardEvent.observe(this, Observer { it?.let { keyboardEvent(it) } })
+		onBackPressedDispatcher.addCallback(this) { leaveStream() }
 		adjustStreamViewAspect()
 
 		if(Preferences(this).rumbleEnabled)
@@ -175,6 +179,68 @@ class StreamActivity : AppCompatActivity()
 	}
 
 	private var controlsJob: Job? = null
+
+	private fun leaveStream()
+	{
+		if(viewModel.session.state.value != StreamStateConnected)
+		{
+			finish()
+			return
+		}
+		when(Preferences(this).leaveAction)
+		{
+			Preferences.LeaveAction.REST -> restAndFinish()
+			Preferences.LeaveAction.KEEP_ON -> finish()
+			Preferences.LeaveAction.ASK -> MaterialAlertDialogBuilder(this)
+				.setTitle(R.string.leave_stream_title)
+				.setPositiveButton(R.string.action_leave_rest) { _, _ -> restAndFinish() }
+				.setNegativeButton(R.string.action_leave_keep_on) { _, _ -> finish() }
+				.setNeutralButton(android.R.string.cancel) { _, _ -> }
+				.show()
+		}
+	}
+
+	private fun restAndFinish()
+	{
+		viewModel.session.gotoBed()
+		// Give the control message a moment to go out before the session stops.
+		uiVisibilityHandler.postDelayed({ finish() }, 500)
+	}
+
+	private var keyboardDialog: androidx.appcompat.app.AlertDialog? = null
+
+	private fun keyboardEvent(event: KeyboardEvent)
+	{
+		when(event.type)
+		{
+			KeyboardEvent.Type.OPEN ->
+			{
+				keyboardDialog?.dismiss()
+				val editText = EditText(this).also {
+					it.setText(event.text ?: "")
+					it.setSelection(it.text.length)
+					it.isSingleLine = true
+				}
+				keyboardDialog = MaterialAlertDialogBuilder(this)
+					.setTitle(R.string.keyboard_dialog_title)
+					.setView(editText)
+					.setPositiveButton(android.R.string.ok) { _, _ ->
+						viewModel.session.keyboardSetText(editText.text.toString())
+						viewModel.session.keyboardAccept()
+					}
+					.setNegativeButton(android.R.string.cancel) { _, _ -> viewModel.session.keyboardReject() }
+					.setOnCancelListener { viewModel.session.keyboardReject() }
+					.show()
+				editText.requestFocus()
+			}
+			KeyboardEvent.Type.REMOTE_CLOSE ->
+			{
+				keyboardDialog?.dismiss()
+				keyboardDialog = null
+			}
+			KeyboardEvent.Type.TEXT_CHANGE -> {}
+		}
+	}
 
 	private var filterStats: String? = null
 	private var lastFramesRendered = -1L

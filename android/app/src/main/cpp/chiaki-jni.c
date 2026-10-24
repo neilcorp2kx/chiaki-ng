@@ -159,6 +159,7 @@ typedef struct android_chiaki_session_t
 	jfieldID java_controller_touch_id;
 
 	jmethodID java_session_event_regist_meth;
+	jmethodID java_session_event_keyboard_meth;
 	jclass java_target_class;
 	jclass java_regist_host_class;
 	jmethodID java_regist_host_ctor;
@@ -254,6 +255,18 @@ static void android_chiaki_event_cb(ChiakiEvent *event, void *user)
 			E->DeleteLocalRef(env, java_host);
 			break;
 		}
+		case CHIAKI_EVENT_KEYBOARD_OPEN:
+		case CHIAKI_EVENT_KEYBOARD_TEXT_CHANGE:
+		case CHIAKI_EVENT_KEYBOARD_REMOTE_CLOSE:
+		{
+			jint type = event->type == CHIAKI_EVENT_KEYBOARD_OPEN ? 0 : event->type == CHIAKI_EVENT_KEYBOARD_TEXT_CHANGE ? 1 : 2;
+			jstring text = event->type != CHIAKI_EVENT_KEYBOARD_REMOTE_CLOSE && event->keyboard.text_str
+				? E->NewStringUTF(env, event->keyboard.text_str) : NULL;
+			E->CallVoidMethod(env, session->java_session, session->java_session_event_keyboard_meth, type, text);
+			if(text)
+				E->DeleteLocalRef(env, text);
+			break;
+		}
 		case CHIAKI_EVENT_HOLEPUNCH:
 			CHIAKI_LOGI(session->log, "PSN data connection %s", event->data_holepunch.finished ? "established" : "pending");
 			break;
@@ -290,6 +303,7 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	jstring psn_token_string = E->GetObjectField(env, connect_info_obj, E->GetFieldID(env, connect_info_class, "psnToken", "Ljava/lang/String;"));
 	jbyteArray psn_account_id_array = E->GetObjectField(env, connect_info_obj, E->GetFieldID(env, connect_info_class, "psnAccountId", "[B"));
 	jboolean auto_regist = E->GetBooleanField(env, connect_info_obj, E->GetFieldID(env, connect_info_class, "autoRegist", "Z"));
+	jboolean enable_keyboard = E->GetBooleanField(env, connect_info_obj, E->GetFieldID(env, connect_info_class, "enableKeyboard", "Z"));
 
 	ChiakiConnectInfo connect_info = { 0 };
 	connect_info.ps5 = ps5;
@@ -336,6 +350,7 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	connect_info.video_profile.codec = (ChiakiCodec)target_value;
 
 	connect_info.video_profile_auto_downgrade = true;
+	connect_info.enable_keyboard = enable_keyboard;
 
 	if(duid_string)
 	{
@@ -424,6 +439,7 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	session->java_session_event_quit_meth = E->GetMethodID(env, session->java_session_class, "eventQuit", "(ILjava/lang/String;)V");
 	session->java_session_event_rumble_meth = E->GetMethodID(env, session->java_session_class, "eventRumble", "(II)V");
 	session->java_session_event_regist_meth = E->GetMethodID(env, session->java_session_class, "eventRegist", "(L"BASE_PACKAGE"/RegistHost;)V");
+	session->java_session_event_keyboard_meth = E->GetMethodID(env, session->java_session_class, "eventKeyboard", "(ILjava/lang/String;)V");
 	session->java_target_class = E->NewGlobalRef(env, E->FindClass(env, BASE_PACKAGE"/Target"));
 	session->java_regist_host_class = E->NewGlobalRef(env, E->FindClass(env, BASE_PACKAGE"/RegistHost"));
 	session->java_regist_host_ctor = E->GetMethodID(env, session->java_regist_host_class, "<init>", REGIST_HOST_CTOR_SIG);
@@ -625,6 +641,33 @@ JNIEXPORT jdoubleArray JNICALL JNI_FCN(sessionGetStats)(JNIEnv *env, jobject obj
 	jdoubleArray result = E->NewDoubleArray(env, 4);
 	E->SetDoubleArrayRegion(env, result, 0, 4, stats);
 	return result;
+}
+
+JNIEXPORT jint JNICALL JNI_FCN(sessionGotoBed)(JNIEnv *env, jobject obj, jlong ptr)
+{
+	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
+	return chiaki_session_goto_bed(&session->session);
+}
+
+JNIEXPORT jint JNICALL JNI_FCN(sessionKeyboardSetText)(JNIEnv *env, jobject obj, jlong ptr, jstring text_string)
+{
+	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
+	const char *text = E->GetStringUTFChars(env, text_string, NULL);
+	ChiakiErrorCode err = chiaki_session_keyboard_set_text(&session->session, text);
+	E->ReleaseStringUTFChars(env, text_string, text);
+	return err;
+}
+
+JNIEXPORT jint JNICALL JNI_FCN(sessionKeyboardAccept)(JNIEnv *env, jobject obj, jlong ptr)
+{
+	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
+	return chiaki_session_keyboard_accept(&session->session);
+}
+
+JNIEXPORT jint JNICALL JNI_FCN(sessionKeyboardReject)(JNIEnv *env, jobject obj, jlong ptr)
+{
+	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
+	return chiaki_session_keyboard_reject(&session->session);
 }
 
 JNIEXPORT void JNICALL JNI_FCN(setCaInfo)(JNIEnv *env, jobject obj, jstring path_string)

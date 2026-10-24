@@ -56,6 +56,13 @@ class Preferences(context: Context)
 		HIGH("high", R.string.preferences_video_filter_high, 0.2f)
 	}
 
+	enum class LeaveAction(val value: String, @StringRes val title: Int)
+	{
+		ASK("ask", R.string.preferences_leave_action_ask),
+		REST("rest", R.string.preferences_leave_action_rest),
+		KEEP_ON("keep_on", R.string.preferences_leave_action_keep_on)
+	}
+
 	companion object
 	{
 		val resolutionDefault = Resolution.RES_720P
@@ -68,6 +75,8 @@ class Preferences(context: Context)
 		val debandAll = Deband.values()
 		val sharpenDefault = Sharpen.OFF
 		val sharpenAll = Sharpen.values()
+		val leaveActionDefault = LeaveAction.ASK
+		val leaveActionAll = LeaveAction.values()
 	}
 
 	private val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -199,6 +208,18 @@ class Preferences(context: Context)
 			Sharpen.values().firstOrNull { it.value == value }
 		} ?: sharpenDefault
 		set(value) { sharedPreferences.edit().putString(sharpenKey, value.value).apply() }
+
+	val leaveActionKey get() = resources.getString(R.string.preferences_leave_action_key)
+	var leaveAction
+		get() = sharedPreferences.getString(leaveActionKey, leaveActionDefault.value)?.let { value ->
+			LeaveAction.values().firstOrNull { it.value == value }
+		} ?: leaveActionDefault
+		set(value) { sharedPreferences.edit().putString(leaveActionKey, value.value).apply() }
+
+	val keyboardEnabledKey get() = resources.getString(R.string.preferences_keyboard_enabled_key)
+	var keyboardEnabled
+		get() = sharedPreferences.getBoolean(keyboardEnabledKey, false)
+		set(value) { sharedPreferences.edit().putBoolean(keyboardEnabledKey, value).apply() }
 
 	val videoFilterStatsKey get() = resources.getString(R.string.preferences_video_filter_stats_key)
 	var videoFilterStats

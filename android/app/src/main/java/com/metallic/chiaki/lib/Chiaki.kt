@@ -77,7 +77,9 @@ data class ConnectInfo(
 	/** 8 byte PSN account id, required with duid */
 	val psnAccountId: ByteArray? = null,
 	/** With duid: register the console over PSN (no PIN), send SessionRegistEvent and stop */
-	val autoRegist: Boolean = false
+	val autoRegist: Boolean = false,
+	/** Experimental: the console sends its text fields to the client keyboard (KeyboardEvent) */
+	val enableKeyboard: Boolean = false
 ): Parcelable
 {
 	val isPsn get() = duid != null
@@ -130,6 +132,10 @@ private class ChiakiNative
 		@JvmStatic external fun registFree(ptr: Long)
 		@JvmStatic external fun setCaInfo(path: String?)
 		@JvmStatic external fun sessionGetStats(ptr: Long): DoubleArray
+		@JvmStatic external fun sessionGotoBed(ptr: Long): Int
+		@JvmStatic external fun sessionKeyboardSetText(ptr: Long, text: String): Int
+		@JvmStatic external fun sessionKeyboardAccept(ptr: Long): Int
+		@JvmStatic external fun sessionKeyboardReject(ptr: Long): Int
 		@JvmStatic external fun psnTlsSelfTest(host: String): Boolean
 		@JvmStatic external fun psnListDevices(token: String, logFile: String?): Array<PsnDevice?>?
 	}
@@ -350,6 +356,11 @@ object ConnectedEvent: Event()
 data class LoginPinRequestEvent(val pinIncorrect: Boolean): Event()
 data class QuitEvent(val reason: QuitReason, val reasonString: String?): Event()
 data class RumbleEvent(val left: UByte, val right: UByte): Event()
+/** The console opened (OPEN), changed (TEXT_CHANGE) or closed (REMOTE_CLOSE) a text field */
+data class KeyboardEvent(val type: Type, val text: String?): Event()
+{
+	enum class Type { OPEN, TEXT_CHANGE, REMOTE_CLOSE }
+}
 /** The console was registered over PSN (ConnectInfo.autoRegist) */
 data class SessionRegistEvent(val host: RegistHost): Event()
 
@@ -416,6 +427,17 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean)
 	{
 		event(SessionRegistEvent(host))
 	}
+
+	private fun eventKeyboard(type: Int, text: String?)
+	{
+		event(KeyboardEvent(KeyboardEvent.Type.values()[type], text))
+	}
+
+	/** Puts the console into rest mode */
+	fun gotoBed() = ErrorCode(ChiakiNative.sessionGotoBed(nativePtr))
+	fun keyboardSetText(text: String) = ErrorCode(ChiakiNative.sessionKeyboardSetText(nativePtr, text))
+	fun keyboardAccept() = ErrorCode(ChiakiNative.sessionKeyboardAccept(nativePtr))
+	fun keyboardReject() = ErrorCode(ChiakiNative.sessionKeyboardReject(nativePtr))
 
 	/** Live numbers from the stream, read from any thread */
 	data class Stats(val bitrateMbps: Double, val packetLoss: Double, val rttMs: Double, val framesRendered: Long)

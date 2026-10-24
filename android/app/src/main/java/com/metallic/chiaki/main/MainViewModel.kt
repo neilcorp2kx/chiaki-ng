@@ -75,7 +75,9 @@ class MainViewModel(val database: AppDatabase, val preferences: Preferences, val
 			val nicknameRegisteredHosts = registeredHosts.associateBy { it.serverNickname }
 			val discoveredNames = discoveredHosts.mapNotNull { it.hostName }.toSet()
 			discoveredHosts.map {
-				DiscoveredDisplayHost(it.serverMac?.let { mac -> macRegisteredHosts[mac] }, it)
+				// Fall back to the console name, e.g. for a registration without the console's MAC.
+				DiscoveredDisplayHost(it.serverMac?.let { mac -> macRegisteredHosts[mac] }
+					?: it.hostName?.let { name -> nicknameRegisteredHosts[name] }, it)
 			} +
 			// Like the desktop GUI: a console found on the local network is used directly instead of over PSN.
 			psnDevices.filter { it.name !in discoveredNames }.map {

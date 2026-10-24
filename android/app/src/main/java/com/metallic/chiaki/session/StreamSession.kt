@@ -39,6 +39,9 @@ class StreamSession(
 
 	private val _state = MutableLiveData<StreamState>(StreamStateIdle)
 	val state: LiveData<StreamState> get() = _state
+	private val _keyboardEvent = MutableLiveData<KeyboardEvent?>(null)
+	/** Console text field events, only with ConnectInfo.enableKeyboard */
+	val keyboardEvent: LiveData<KeyboardEvent?> get() = _keyboardEvent
 	private val _rumbleState = MutableLiveData<RumbleEvent>(RumbleEvent(0U, 0U))
 	val rumbleState: LiveData<RumbleEvent> get() = _rumbleState
 
@@ -58,6 +61,13 @@ class StreamSession(
 		if(connectInfo.isPsn)
 			connectInfo = connectInfo.copy(psnToken = token)
 	}
+
+	/** Puts the console into rest mode, for leaving the stream */
+	fun gotoBed() = session?.gotoBed()
+
+	fun keyboardSetText(text: String) = session?.keyboardSetText(text)
+	fun keyboardAccept() = session?.keyboardAccept()
+	fun keyboardReject() = session?.keyboardReject()
 
 	/** Live stream numbers, null while not connected */
 	fun stats() = session?.stats()
@@ -132,6 +142,7 @@ class StreamSession(
 				)
 			)
 			is RumbleEvent -> _rumbleState.postValue(event)
+			is KeyboardEvent -> _keyboardEvent.postValue(event)
 		}
 	}
 

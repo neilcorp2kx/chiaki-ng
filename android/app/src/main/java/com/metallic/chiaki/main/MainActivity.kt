@@ -17,7 +17,11 @@ import androidx.lifecycle.lifecycleScope
 import android.widget.Toast
 import com.metallic.chiaki.lib.PsnDevice
 import com.metallic.chiaki.regist.PsnLoginActivity
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.metallic.chiaki.R
@@ -34,6 +38,12 @@ import com.metallic.chiaki.stream.StreamActivity
 
 class MainActivity : AppCompatActivity()
 {
+	companion object
+	{
+		/** The desktop GUI waits up to 25 s for a console to wake */
+		private const val WAKE_TIMEOUT_MS = 25_000L
+	}
+
 	private lateinit var viewModel: MainViewModel
 
 	private lateinit var binding: ActivityMainBinding
@@ -222,7 +232,8 @@ class MainActivity : AppCompatActivity()
 				duid = device.duid,
 				psnToken = token,
 				psnAccountId = psnAccount.accountId,
-				autoRegist = registeredHost == null)
+				autoRegist = registeredHost == null,
+				enableKeyboard = Preferences(this@MainActivity).keyboardEnabled)
 			Intent(this@MainActivity, StreamActivity::class.java).let {
 				it.putExtra(StreamActivity.EXTRA_CONNECT_INFO, connectInfo)
 				startActivity(it)
@@ -240,8 +251,10 @@ class MainActivity : AppCompatActivity()
 		val registeredHost = host.registeredHost
 		if(registeredHost != null)
 		{
-			fun connect() {
-				val connectInfo = ConnectInfo(host.isPS5, host.host, registeredHost.rpRegistKey, registeredHost.rpKey, Preferences(this).videoProfile)
+			fun connect(address: String = host.host) {
+				val preferences = Preferences(this)
+				val connectInfo = ConnectInfo(host.isPS5, address, registeredHost.rpRegistKey, registeredHost.rpKey, preferences.videoProfile,
+					enableKeyboard = preferences.keyboardEnabled)
 				Intent(this, StreamActivity::class.java).let {
 					it.putExtra(StreamActivity.EXTRA_CONNECT_INFO, connectInfo)
 					startActivity(it)
@@ -249,19 +262,7 @@ class MainActivity : AppCompatActivity()
 			}
 
 			if(host is DiscoveredDisplayHost && host.discoveredHost.state == DiscoveryHost.State.STANDBY)
-			{
-				MaterialAlertDialogBuilder(this)
-					.setMessage(R.string.alert_message_standby_wakeup)
-					.setPositiveButton(R.string.action_wakeup) { _, _ ->
-						wakeupHost(host)
-					}
-					.setNeutralButton(R.string.action_connect_immediately) { _, _ ->
-						connect()
-					}
-					.setNegativeButton(R.string.action_connect_cancel_connect) { _, _ -> }
-					.create()
-					.show()
-			}
+				wakeAndConnect(host, registeredHost) { address -> connect(address) }
 			else
 				connect()
 		}
@@ -279,6 +280,38 @@ class MainActivity : AppCompatActivity()
 					it.putExtra(RegistActivity.EXTRA_ASSIGN_MANUAL_HOST_ID, host.manualHost.id)
 				startActivity(it)
 			}
+		}
+	}
+
+	private var wakeJob: Job? = null
+
+	/** Like the desktop GUI: wake the console, wait until discovery reports it ready, then connect */
+	private fun wakeAndConnect(host: DiscoveredDisplayHost, registeredHost: RegisteredHost, connect: (address: String) -> Unit)
+	{
+		viewModel.discoveryManager.sendWakeup(host.host, registeredHost.rpRegistKey, registeredHost.target.isPS5)
+		val name = host.name ?: host.host
+		val consoleId = host.discoveredHost.hostId
+		val dialog = MaterialAlertDialogBuilder(this)
+			.setMessage(getString(R.string.waking_console, name))
+			.setNegativeButton(android.R.string.cancel) { _, _ -> wakeJob?.cancel() }
+			.setCancelable(false)
+			.show()
+		wakeJob?.cancel()
+		wakeJob = lifecycleScope.launch {
+			val readyHost = withTimeoutOrNull(WAKE_TIMEOUT_MS) {
+				viewModel.discoveryManager.discoveredHosts
+					.map { hosts -> hosts.firstOrNull { it.hostId == consoleId && it.state == DiscoveryHost.State.READY } }
+					.first { it != null }
+			}
+			dialog.dismiss()
+			if(readyHost != null)
+				connect(readyHost.hostAddr ?: host.host)
+			else
+				MaterialAlertDialogBuilder(this@MainActivity)
+					.setMessage(getString(R.string.waking_console_failed, name))
+					.setPositiveButton(R.string.action_connect_anyway) { _, _ -> connect(host.host) }
+					.setNegativeButton(android.R.string.cancel) { _, _ -> }
+					.show()
 		}
 	}
 

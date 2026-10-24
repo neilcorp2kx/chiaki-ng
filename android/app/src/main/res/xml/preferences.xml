@@ -93,6 +93,16 @@
             app:key="@string/preferences_remote_bitrate_key"
             app:title="@string/preferences_remote_bitrate_title"
             app:icon="@drawable/ic_bitrate"/>
+
+        <ListPreference
+            app:key="@string/preferences_leave_action_key"
+            app:title="@string/preferences_leave_action_title"
+            app:summary="%s"/>
+
+        <SwitchPreference
+            app:key="@string/preferences_keyboard_enabled_key"
+            app:title="@string/preferences_keyboard_enabled_title"
+            app:summary="@string/preferences_keyboard_enabled_summary"/>
     </PreferenceCategory>
 
     <PreferenceCategory
