@@ -133,6 +133,7 @@ private class ChiakiNative
 		@JvmStatic external fun setCaInfo(path: String?)
 		@JvmStatic external fun sessionGetStats(ptr: Long): DoubleArray
 		@JvmStatic external fun sessionGotoBed(ptr: Long): Int
+		@JvmStatic external fun sessionSetMicrophone(ptr: Long, enabled: Boolean): Boolean
 		@JvmStatic external fun sessionKeyboardSetText(ptr: Long, text: String): Int
 		@JvmStatic external fun sessionKeyboardAccept(ptr: Long): Int
 		@JvmStatic external fun sessionKeyboardReject(ptr: Long): Int
@@ -432,6 +433,9 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean)
 	{
 		event(KeyboardEvent(KeyboardEvent.Type.values()[type], text))
 	}
+
+	/** Unmutes (capture + send) or mutes the microphone. Needs RECORD_AUDIO. Returns false if capture failed. */
+	fun setMicrophone(enabled: Boolean) = ChiakiNative.sessionSetMicrophone(nativePtr, enabled)
 
 	/** Puts the console into rest mode */
 	fun gotoBed() = ErrorCode(ChiakiNative.sessionGotoBed(nativePtr))

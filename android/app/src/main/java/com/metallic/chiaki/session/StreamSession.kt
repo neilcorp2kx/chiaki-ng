@@ -62,6 +62,9 @@ class StreamSession(
 			connectInfo = connectInfo.copy(psnToken = token)
 	}
 
+	/** Microphone on or off, false while not connected */
+	fun setMicrophone(enabled: Boolean) = session?.setMicrophone(enabled) ?: false
+
 	/** Puts the console into rest mode, for leaving the stream */
 	fun gotoBed() = session?.gotoBed()
 

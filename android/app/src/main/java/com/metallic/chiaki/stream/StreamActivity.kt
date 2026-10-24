@@ -27,6 +27,10 @@ import com.metallic.chiaki.common.Preferences
 import com.metallic.chiaki.common.PsnAccount
 import android.util.Log
 import androidx.activity.addCallback
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.content.pm.PackageManager
+import android.widget.Toast
 import kotlinx.coroutines.launch
 import com.metallic.chiaki.common.ext.viewModelFactory
 import com.metallic.chiaki.databinding.ActivityStreamBinding
@@ -118,6 +122,19 @@ class StreamActivity : AppCompatActivity()
 			showOverlay()
 		}
 
+		binding.microphoneSwitch.setOnCheckedChangeListener { _, isChecked ->
+			if(isChecked)
+			{
+				if(checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
+					enableMicrophone()
+				else
+					microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
+			}
+			else
+				viewModel.session.setMicrophone(false)
+			showOverlay()
+		}
+
 		binding.displayModeToggle.addOnButtonCheckedListener { _, _, _ ->
 			adjustStreamViewAspect()
 			showOverlay()
@@ -179,6 +196,25 @@ class StreamActivity : AppCompatActivity()
 	}
 
 	private var controlsJob: Job? = null
+
+	private val microphonePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+		if(granted)
+			enableMicrophone()
+		else
+		{
+			binding.microphoneSwitch.isChecked = false
+			Toast.makeText(this, R.string.microphone_permission_denied, Toast.LENGTH_LONG).show()
+		}
+	}
+
+	private fun enableMicrophone()
+	{
+		if(!viewModel.session.setMicrophone(true))
+		{
+			binding.microphoneSwitch.isChecked = false
+			Toast.makeText(this, R.string.microphone_failed, Toast.LENGTH_LONG).show()
+		}
+	}
 
 	private fun leaveStream()
 	{
@@ -333,6 +369,8 @@ class StreamActivity : AppCompatActivity()
 	{
 		super.onPause()
 		uiVisibilityHandler.removeCallbacks(statsRunnable)
+		// The session ends on pause, and with it the microphone.
+		binding.microphoneSwitch.isChecked = false
 		viewModel.session.pause()
 		filterRenderer?.let { binding.filterSurfaceView.onPause() }
 	}

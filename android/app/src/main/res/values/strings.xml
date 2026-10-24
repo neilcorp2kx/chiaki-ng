@@ -96,6 +96,9 @@
     <string name="preferences_leave_action_keep_on">Keep the console on</string>
     <string name="preferences_keyboard_enabled_title">Phone Keyboard for Console Text (Experimental)</string>
     <string name="preferences_keyboard_enabled_summary">When a game asks for text, type it on the phone keyboard instead of the console keyboard</string>
+    <string name="stream_microphone">Microphone</string>
+    <string name="microphone_permission_denied">Microphone permission is needed for voice chat</string>
+    <string name="microphone_failed">Could not start the microphone</string>
     <string name="leave_stream_title">Leave the stream?</string>
     <string name="action_leave_rest">Rest mode</string>
     <string name="action_leave_keep_on">Keep on</string>

@@ -20,6 +20,7 @@
 #include "video-decoder.h"
 #include "audio-decoder.h"
 #include "audio-output.h"
+#include "audio-input.h"
 #include "log.h"
 #include "chiaki-jni.h"
 
@@ -167,6 +168,11 @@ typedef struct android_chiaki_session_t
 	AndroidChiakiVideoDecoder video_decoder;
 	AndroidChiakiAudioDecoder audio_decoder;
 	void *audio_output;
+
+	// Microphone: capture -> Opus -> console, set up like the desktop GUI
+	ChiakiOpusEncoder opus_encoder;
+	void *audio_input;
+	bool mic_connected;
 
 	// Remote Play over PSN: the holepunch steps before chiaki_session_start() block for
 	// several seconds, so they run on psn_thread.
@@ -469,6 +475,12 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	session->java_controller_touch_y = E->GetFieldID(env, controller_touch_class, "y", "S");
 	session->java_controller_touch_id = E->GetFieldID(env, controller_touch_class, "id", "B");
 
+	chiaki_opus_encoder_init(&session->opus_encoder, log);
+	ChiakiAudioHeader mic_header;
+	chiaki_audio_header_set(&mic_header, 2, 16, 48000, 480);
+	chiaki_opus_encoder_header(&mic_header, &session->opus_encoder, &session->session);
+	session->audio_input = android_chiaki_audio_input_new(log, &session->opus_encoder);
+
 	chiaki_session_set_event_cb(&session->session, android_chiaki_event_cb, session);
 	chiaki_session_set_video_sample_cb(&session->session, android_chiaki_video_decoder_video_sample, &session->video_decoder);
 
@@ -496,6 +508,8 @@ JNIEXPORT void JNICALL JNI_FCN(sessionFree)(JNIEnv *env, jobject obj, jlong ptr)
 	if(!session)
 		return;
 	CHIAKI_LOGI(session->log, "Shutting down JNI Session");
+	android_chiaki_audio_input_free(session->audio_input);
+	chiaki_opus_encoder_fini(&session->opus_encoder);
 	chiaki_session_fini(&session->session);
 	android_chiaki_video_decoder_fini(&session->video_decoder);
 	android_chiaki_audio_decoder_fini(&session->audio_decoder);
@@ -641,6 +655,26 @@ JNIEXPORT jdoubleArray JNICALL JNI_FCN(sessionGetStats)(JNIEnv *env, jobject obj
 	jdoubleArray result = E->NewDoubleArray(env, 4);
 	E->SetDoubleArrayRegion(env, result, 0, 4, stats);
 	return result;
+}
+
+JNIEXPORT jboolean JNICALL JNI_FCN(sessionSetMicrophone)(JNIEnv *env, jobject obj, jlong ptr, jboolean enabled)
+{
+	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
+	if(!enabled)
+	{
+		chiaki_session_toggle_microphone(&session->session, true);
+		android_chiaki_audio_input_stop(session->audio_input);
+		return true;
+	}
+	if(!android_chiaki_audio_input_start(session->audio_input))
+		return false;
+	if(!session->mic_connected)
+	{
+		chiaki_session_connect_microphone(&session->session);
+		session->mic_connected = true;
+	}
+	chiaki_session_toggle_microphone(&session->session, false);
+	return true;
 }
 
 JNIEXPORT jint JNICALL JNI_FCN(sessionGotoBed)(JNIEnv *env, jobject obj, jlong ptr)

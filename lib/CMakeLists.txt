@@ -113,7 +113,9 @@ set_source_files_properties(${CHIAKI_LIB_PROTO_SOURCE_FILES} ${CHIAKI_LIB_PROTO_
 include_directories("${CHIAKI_LIB_PROTO_INCLUDE_DIR}")
 
 if(CHIAKI_LIB_ENABLE_OPUS)
-	find_package(Opus REQUIRED)
+	if(NOT CHIAKI_LIB_OPUS_EXTERNAL_PROJECT)
+		find_package(Opus REQUIRED)
+	endif()
 	include_directories(${Opus_INCLUDE_DIRS})
 endif()
 
