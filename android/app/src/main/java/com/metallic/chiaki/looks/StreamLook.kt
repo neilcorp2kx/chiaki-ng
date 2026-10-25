@@ -12,6 +12,7 @@ import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 import com.metallic.chiaki.R
 
 /** Stream screen details of the Status light and Console home looks */
@@ -34,6 +35,8 @@ object StreamLook
 		view.gravity = Gravity.CENTER_HORIZONTAL
 		view.setPadding((16 * density).toInt(), (8 * density).toInt(), (16 * density).toInt(), (8 * density).toInt())
 		view.textSize = 13f
+		// The layout sets monospace for Classic; the looks use their own face, with tabular figures.
+		view.typeface = ResourcesCompat.getFont(context, if(style == AppStyle.CONSOLE_HOME) R.font.mukta else R.font.archivo)
 		view.fontFeatureSettings = "tnum"
 		when(style)
 		{

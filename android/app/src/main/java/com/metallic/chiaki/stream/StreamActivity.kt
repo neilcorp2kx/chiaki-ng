@@ -126,6 +126,9 @@ class StreamActivity : AppCompatActivity()
 		{
 			StreamLook.styleStats(appStyle, binding.filterStatsTextView)
 			binding.liveEdgeView.style = appStyle
+			// Their connecting screen replaces the Classic spinner and status text.
+			binding.progressBar.isGone = true
+			binding.statusTextView.isGone = true
 		}
 
 		WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -405,7 +408,8 @@ class StreamActivity : AppCompatActivity()
 			{
 				binding.liveEdgeView.struggling = StreamLook.struggling(stats.packetLoss, fps, profile.maxFPS)
 				binding.filterStatsTextView.text = StreamLook.formatStats(appStyle, profile.height, fps, stats.bitrateMbps,
-					stats.packetLoss, stats.rttMs, viewModel.session.connectInfo.isPsn, controllerFeedback?.description,
+					stats.packetLoss, stats.rttMs, viewModel.session.connectInfo.isPsn,
+					controllerFeedback?.takeIf { it.controller != null }?.description,
 					filterStats, getString(R.string.stream_stats_route_psn), getString(R.string.stream_stats_route_lan))
 				return
 			}
