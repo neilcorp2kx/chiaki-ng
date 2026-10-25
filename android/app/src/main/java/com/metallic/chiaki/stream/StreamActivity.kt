@@ -39,6 +39,7 @@ import com.metallic.chiaki.lib.KeyboardEvent
 import com.metallic.chiaki.lib.LedColorEvent
 import com.metallic.chiaki.lib.PlayerIndexEvent
 import com.metallic.chiaki.lib.ConnectInfo
+import com.metallic.chiaki.lib.ControllerState
 import com.metallic.chiaki.lib.ConnectVideoProfile
 import com.metallic.chiaki.session.*
 import com.metallic.chiaki.touchcontrols.DefaultTouchControlsFragment
@@ -288,7 +289,8 @@ class StreamActivity : AppCompatActivity()
 		filterRenderer = renderer
 	}
 
-	private var controlsJob: Job? = null
+	private val controlsJobs = mutableMapOf<Int, Job>()
+	private val touchStates = mutableMapOf<Int, ControllerState>()
 
 	private val microphonePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
 		if(granted)
@@ -465,9 +467,16 @@ class StreamActivity : AppCompatActivity()
 		super.onAttachFragment(fragment)
 		if(fragment is TouchControlsFragment)
 		{
-			controlsJob?.cancel()
-			controlsJob = fragment.controllerState
-				.onEach { viewModel.input.touchControllerState = it }
+			// Both touch fragments (on-screen controls and touchpad only) send their state. One job per
+			// fragment: a single job slot let the second fragment cancel the first, so the on-screen
+			// buttons never reached the console.
+			val id = fragment.id
+			controlsJobs[id]?.cancel()
+			controlsJobs[id] = fragment.controllerState
+				.onEach { state ->
+					touchStates[id] = state
+					viewModel.input.touchControllerState = touchStates.values.fold(ControllerState()) { all, one -> all or one }
+				}
 				.launchIn(lifecycleScope)
 			fragment.onScreenControlsEnabled = viewModel.onScreenControlsVisible
 			if(fragment is TouchpadOnlyFragment)
@@ -504,7 +513,8 @@ class StreamActivity : AppCompatActivity()
 	override fun onDestroy()
 	{
 		super.onDestroy()
-		controlsJob?.cancel()
+		controlsJobs.values.forEach { it.cancel() }
+		controlsJobs.clear()
 		controllerFeedback?.close()
 		controllerFeedback = null
 		filterRenderer?.let {
