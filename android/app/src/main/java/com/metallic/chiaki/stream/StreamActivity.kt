@@ -209,6 +209,28 @@ class StreamActivity : AppCompatActivity()
 			}
 		}
 		setupMenuButton()
+		autoReconnect = AutoReconnect(this, uiVisibilityHandler,
+			isPlaying = { shownState == StreamStateConnected },
+			reconnect = { attempt, max, networkChanged ->
+				dialog?.dismiss()
+				dialog = null
+				viewModel.session.shutdown()
+				resumeSession()
+				viewModel.session.setStatus(getString(
+					if(networkChanged) R.string.status_reconnecting_network else R.string.status_reconnecting, attempt, max))
+			},
+			waitForNetwork = {
+				viewModel.session.shutdown()
+				viewModel.session.setStatus(getString(R.string.status_waiting_network))
+			},
+			gaveUp = {
+				MaterialAlertDialogBuilder(this)
+					.setMessage(R.string.alert_message_no_network)
+					.setPositiveButton(R.string.action_reconnect) { _, _ -> reconnect() }
+					.setNegativeButton(R.string.action_quit_session) { _, _ -> finish() }
+					.setOnCancelListener { finish() }
+					.show()
+			}).also { it.start() }
 		adjustStreamViewAspect()
 
 		val feedback = ControllerFeedback(this) { viewModel.setControllerConnected(it != null) }
@@ -259,6 +281,8 @@ class StreamActivity : AppCompatActivity()
 
 	/** The connecting screen is up; it covers the touch controls */
 	private var connectScreenShown = true
+
+	private lateinit var autoReconnect: AutoReconnect
 
 	/** The stream menu was opened with the menu button and stays until closed */
 	private var menuOpen = false
@@ -594,6 +618,7 @@ class StreamActivity : AppCompatActivity()
 	{
 		super.onPause()
 		uiVisibilityHandler.removeCallbacks(statsRunnable)
+		autoReconnect.cancel()
 		// The session ends on pause, and with it the microphone.
 		overlay.microphoneSwitch.isChecked = false
 		viewModel.session.pause()
@@ -605,6 +630,8 @@ class StreamActivity : AppCompatActivity()
 		super.onDestroy()
 		controlsJobs.values.forEach { it.cancel() }
 		controlsJobs.clear()
+		if(::autoReconnect.isInitialized)
+			autoReconnect.stop()
 		controllerFeedback?.close()
 		controllerFeedback = null
 		filterRenderer?.let {
@@ -691,18 +718,25 @@ class StreamActivity : AppCompatActivity()
 				dialogContents = null
 		}
 
+	/** The last state shown, so playing means what the screen shows (also in the debug pretend mode) */
+	private var shownState: StreamState = StreamStateIdle
+
 	private fun stateChanged(state: StreamState)
 	{
+		shownState = state
 		binding.menuButton.isVisible = state == StreamStateConnected
+		if(state == StreamStateConnected)
+			autoReconnect.onPlaying()
 		if(connectScreen != null)
 		{
-			showConnectScreen(state == StreamStateConnecting || state == StreamStateIdle)
+			showConnectScreen(state == StreamStateConnecting || state == StreamStateIdle || autoReconnect.active)
 			binding.liveEdgeView.isVisible = state == StreamStateConnected
 		}
 		else
 		{
-			binding.progressBar.visibility = if(state == StreamStateConnecting) View.VISIBLE else View.GONE
-			binding.statusTextView.visibility = if(state == StreamStateConnecting) View.VISIBLE else View.GONE
+			val connecting = state == StreamStateConnecting || autoReconnect.active
+			binding.progressBar.visibility = if(connecting) View.VISIBLE else View.GONE
+			binding.statusTextView.visibility = if(connecting) View.VISIBLE else View.GONE
 		}
 
 		when(state)
@@ -711,7 +745,12 @@ class StreamActivity : AppCompatActivity()
 			{
 				if(dialogContents != StreamQuitDialog)
 				{
-					if(state.reason.isError)
+					if(state.reason.isError && autoReconnect.onQuit(state.reason))
+					{
+						// Reconnecting by itself: keep the connecting screen up, no error.
+						showConnectScreen(true)
+					}
+					else if(state.reason.isError)
 					{
 						dialog?.dismiss()
 						val reasonStr = state.reasonString
@@ -815,8 +854,68 @@ class StreamActivity : AppCompatActivity()
 
 	private fun adjustStreamViewAspect() = adjustSurfaceViewAspect()
 
-	override fun dispatchKeyEvent(event: KeyEvent) = viewModel.input.dispatchKeyEvent(event) || super.dispatchKeyEvent(event)
-	override fun onGenericMotionEvent(event: MotionEvent) = viewModel.input.onGenericMotionEvent(event) || super.onGenericMotionEvent(event)
+	/** L1 + R1 + L3 + R3, like the desktop app: hold all four, the menu opens or closes when they are let go */
+	private val menuChordKeys = setOf(KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1,
+		KeyEvent.KEYCODE_BUTTON_THUMBL, KeyEvent.KEYCODE_BUTTON_THUMBR)
+	private val menuChordDown = mutableSetOf<Int>()
+	private var menuChordComplete = false
+
+	private fun menuChord(event: KeyEvent)
+	{
+		if(event.keyCode !in menuChordKeys || event.repeatCount > 0)
+			return
+		when(event.action)
+		{
+			KeyEvent.ACTION_DOWN ->
+			{
+				menuChordDown += event.keyCode
+				if(menuChordDown.size == menuChordKeys.size)
+					menuChordComplete = true
+			}
+			KeyEvent.ACTION_UP ->
+			{
+				menuChordDown -= event.keyCode
+				if(menuChordComplete && shownState == StreamStateConnected && controlsEditor == null)
+				{
+					menuChordComplete = false
+					if(menuOpen)
+						closeMenu()
+					else
+					{
+						openMenu()
+						// Controller navigation: start on the first control of the menu
+						overlay.onScreenControlsSwitch.post { overlay.onScreenControlsSwitch.requestFocusFromTouch() }
+					}
+				}
+				else if(menuChordDown.isEmpty())
+					menuChordComplete = false
+			}
+		}
+	}
+
+	override fun dispatchKeyEvent(event: KeyEvent): Boolean
+	{
+		menuChord(event)
+		// While the menu is open the controller moves through it (A chooses, B closes). Releases
+		// also go to the console, so no button stays held there; the menu needs them to complete a click.
+		if(menuOpen && !event.isMenuChordKey())
+		{
+			if(event.action == KeyEvent.ACTION_UP)
+				viewModel.input.dispatchKeyEvent(event)
+			return super.dispatchKeyEvent(event)
+		}
+		return viewModel.input.dispatchKeyEvent(event) || super.dispatchKeyEvent(event)
+	}
+
+	private fun KeyEvent.isMenuChordKey() = keyCode in menuChordKeys
+
+	override fun onGenericMotionEvent(event: MotionEvent): Boolean
+	{
+		// The D-pad of many controllers is an axis; with the menu open, let Android turn it into navigation.
+		if(menuOpen)
+			return super.onGenericMotionEvent(event)
+		return viewModel.input.onGenericMotionEvent(event) || super.onGenericMotionEvent(event)
+	}
 }
 
 enum class TransformMode

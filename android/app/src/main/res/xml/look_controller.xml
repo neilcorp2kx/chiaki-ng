@@ -2,6 +2,11 @@
 <!-- A settings page of the Status light and Console home looks (SettingsCategory). Same keys as preferences.xml. -->
 <PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
     <PreferenceCategory app:title="@string/settings_group_buttons">
+        <Preference
+            app:key="menu_shortcut_info"
+            app:title="@string/settings_menu_shortcut_title"
+            app:summary="@string/settings_menu_shortcut_summary"
+            app:selectable="false" />
         <SwitchPreference
             app:key="@string/preferences_swap_cross_moon_key"
             app:title="@string/settings_swap_title"

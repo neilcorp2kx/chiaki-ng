@@ -361,4 +361,12 @@
     <string name="settings_reset_controls_title">Reset control positions</string>
     <string name="settings_reset_controls_summary">Puts the on-screen controls back where they started. To move them, touch and hold the menu button while playing.</string>
     <string name="settings_reset_controls_done">The on-screen controls are back in their places</string>
+
+    <!-- Reconnecting by itself (AutoReconnect) and the controller shortcut for the stream menu -->
+    <string name="status_reconnecting">Connection lost. Reconnecting, attempt %1$d of %2$d…</string>
+    <string name="status_reconnecting_network">The network changed. Reconnecting, attempt %1$d of %2$d…</string>
+    <string name="status_waiting_network">Connection lost. Waiting for a network…</string>
+    <string name="alert_message_no_network">No network came back. Connect to Wi-Fi or mobile data, then reconnect.</string>
+    <string name="settings_menu_shortcut_title">Stream menu from the controller</string>
+    <string name="settings_menu_shortcut_summary">Hold L1, R1, L3 and R3 together, then let go. Move through the menu with the D-pad, A chooses, B closes.</string>
 </resources>
