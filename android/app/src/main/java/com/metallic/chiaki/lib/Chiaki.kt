@@ -92,7 +92,9 @@ data class PsnDevice(
 	val name: String,
 	val duid: String,
 	val ps5: Boolean,
-	val remotePlayEnabled: Boolean
+	val remotePlayEnabled: Boolean,
+	/** PSN can wake it from rest mode (wakeupEnabledPowerModes has networkStandby) */
+	val networkWakeupEnabled: Boolean
 )
 
 /** Diagnostic: TLS connection to host like the PSN websocket, incl. chain recovery. Blocks. */

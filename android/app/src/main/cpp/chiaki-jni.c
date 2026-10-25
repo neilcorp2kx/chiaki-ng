@@ -731,8 +731,10 @@ static void *android_chiaki_psn_connect_thread(void *user)
 	{
 		char reason[256];
 		snprintf(reason, sizeof(reason), "PSN connection failed while %s: %s%s", step, chiaki_error_string(err),
-				err == CHIAKI_ERR_HOST_DOWN || err == CHIAKI_ERR_HOST_UNREACH
-					? ". Is the console on or in rest mode, with Remote Play enabled?" : "");
+				err == CHIAKI_ERR_HOST_DOWN || err == CHIAKI_ERR_HOST_UNREACH || err == CHIAKI_ERR_TIMEOUT
+					? ".\n\nPSN could not reach the console. Check that it is on or in rest mode, that its system "
+					  "software is up to date and signed in to PSN, and that \"Stay Connected to the Internet\" and "
+					  "\"Enable Turning On PS5 from Network\" are on (Settings > System > Power Saving)." : "");
 		CHIAKI_LOGE(session->log, "%s", reason);
 		android_chiaki_session_send_quit(session, CHIAKI_QUIT_REASON_CTRL_CONNECT_FAILED, reason);
 	}
@@ -883,7 +885,7 @@ JNIEXPORT jobjectArray JNICALL JNI_FCN(psnListDevices)(JNIEnv *env, jobject obj,
 	if(log_file)
 		E->ReleaseStringUTFChars(env, log_file_string, log_file);
 	jclass device_class = E->FindClass(env, BASE_PACKAGE"/PsnDevice");
-	jmethodID device_ctor = E->GetMethodID(env, device_class, "<init>", "(Ljava/lang/String;Ljava/lang/String;ZZ)V");
+	jmethodID device_ctor = E->GetMethodID(env, device_class, "<init>", "(Ljava/lang/String;Ljava/lang/String;ZZZ)V");
 
 	const char *token = E->GetStringUTFChars(env, token_string, NULL);
 	ChiakiHolepunchDeviceInfo *devices = NULL;
@@ -906,7 +908,8 @@ JNIEXPORT jobjectArray JNICALL JNI_FCN(psnListDevices)(JNIEnv *env, jobject obj,
 			jobject device = E->NewObject(env, device_class, device_ctor,
 					jnistr_from_ascii(env, name), E->NewStringUTF(env, duid_hex),
 					(jboolean)(devices[i].type == CHIAKI_HOLEPUNCH_CONSOLE_TYPE_PS5),
-					(jboolean)devices[i].remoteplay_enabled);
+					(jboolean)devices[i].remoteplay_enabled,
+					(jboolean)devices[i].network_wakeup_enabled);
 			E->SetObjectArrayElement(env, result, (jsize)i, device);
 			E->DeleteLocalRef(env, device);
 		}

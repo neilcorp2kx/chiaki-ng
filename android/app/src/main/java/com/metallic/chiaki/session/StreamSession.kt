@@ -20,6 +20,8 @@ data class StreamStateCreateError(val error: CreateError): StreamState()
 data class StreamStateQuit(val reason: QuitReason, val reasonString: String?): StreamState()
 data class StreamStateLoginPinRequest(val pinIncorrect: Boolean): StreamState()
 
+private const val PSN_RETRY_DELAY_MS = 3000L
+
 class StreamSession(
 	connectInfo: ConnectInfo,
 	val logManager: LogManager,
@@ -32,6 +34,10 @@ class StreamSession(
 	var connectInfo = connectInfo
 		private set
 	private var registeredOverPsn = false
+	/** One automatic retry when the console does not answer the PSN session start */
+	private var psnRetried = false
+	/** Text for the retry status, set by the activity */
+	var psnRetryStatus: String = "Trying again…"
 	private val mainHandler = Handler(Looper.getMainLooper())
 
 	var session: Session? = null
@@ -93,6 +99,8 @@ class StreamSession(
 
 	fun pause()
 	{
+		// No retry or re-register reconnect after the user left the stream.
+		mainHandler.removeCallbacksAndMessages(null)
 		shutdown()
 	}
 
@@ -121,7 +129,11 @@ class StreamSession(
 	{
 		when(event)
 		{
-			is ConnectedEvent -> _state.postValue(StreamStateConnected)
+			is ConnectedEvent ->
+			{
+				psnRetried = false
+				_state.postValue(StreamStateConnected)
+			}
 			is SessionRegistEvent ->
 			{
 				registeredOverPsn = true
@@ -129,6 +141,18 @@ class StreamSession(
 			}
 			is QuitEvent ->
 			{
+				if(connectInfo.isPsn && !psnRetried && event.reason.isError
+					&& event.reasonString?.contains("starting the session on the console") == true)
+				{
+					// Often the console just ended the previous session and is not ready yet.
+					psnRetried = true
+					_status.postValue(psnRetryStatus)
+					mainHandler.postDelayed({
+						shutdown()
+						resume()
+					}, PSN_RETRY_DELAY_MS)
+					return
+				}
 				if(connectInfo.autoRegist && registeredOverPsn && !event.reason.isError)
 				{
 					// Registered without a PIN, now connect again to stream.

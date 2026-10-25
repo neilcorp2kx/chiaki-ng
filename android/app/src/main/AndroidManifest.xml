@@ -49,10 +49,11 @@
             </intent-filter>
         </activity>
 
+        <!-- Handle fold/unfold and display changes in place: recreating the activity ends the stream. -->
         <activity
             android:name=".stream.StreamActivity"
             android:theme="@style/StreamTheme"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenSize" />
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode" />
 
         <activity
             android:name=".settings.SettingsActivity" />

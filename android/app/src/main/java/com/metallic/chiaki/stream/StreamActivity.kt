@@ -156,6 +156,7 @@ class StreamActivity : AppCompatActivity()
 
 		val feedback = ControllerFeedback(this) { viewModel.setControllerConnected(it != null) }
 		viewModel.setControllerConnected(feedback.controller != null)
+		viewModel.session.psnRetryStatus = getString(R.string.status_psn_retry)
 		viewModel.session.status.observe(this, Observer { status ->
 			binding.statusTextView.text = status ?: ""
 		})
@@ -439,6 +440,14 @@ class StreamActivity : AppCompatActivity()
 					binding.overlay.isGone = true
 				}
 			})
+	}
+
+	override fun onConfigurationChanged(newConfig: android.content.res.Configuration)
+	{
+		// Fold/unfold or display change, handled in place so the stream keeps running.
+		super.onConfigurationChanged(newConfig)
+		hideSystemUI()
+		adjustStreamViewAspect()
 	}
 
 	override fun onWindowFocusChanged(hasFocus: Boolean)

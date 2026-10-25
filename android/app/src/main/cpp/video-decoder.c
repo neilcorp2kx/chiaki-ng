@@ -23,6 +23,7 @@ ChiakiErrorCode android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *dec
 	decoder->target_height = target_height;
 	decoder->target_codec = codec;
 	decoder->shutdown_output = false;
+	decoder->low_latency = true;
 	return chiaki_mutex_init(&decoder->codec_mutex, false);
 }
 
@@ -102,7 +103,38 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
 	AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_WIDTH, decoder->target_width);
 	AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_HEIGHT, decoder->target_height);
 
-	media_status_t r = AMediaCodec_configure(decoder->codec, format, decoder->window, NULL, 0);
+	media_status_t r = AMEDIA_ERROR_UNKNOWN;
+	if(decoder->low_latency)
+	{
+		// Without these, many decoders hold several frames back before output. Same keys as
+		// Moonlight: the platform key (Android 11+), real-time priority, and Qualcomm's own keys.
+		// Decoders ignore keys they do not know; if one rejects them, configure again without.
+		AMediaFormat *ll_format = AMediaFormat_new();
+		AMediaFormat_setString(ll_format, AMEDIAFORMAT_KEY_MIME, mime);
+		AMediaFormat_setInt32(ll_format, AMEDIAFORMAT_KEY_WIDTH, decoder->target_width);
+		AMediaFormat_setInt32(ll_format, AMEDIAFORMAT_KEY_HEIGHT, decoder->target_height);
+		AMediaFormat_setInt32(ll_format, "low-latency", 1);
+		AMediaFormat_setInt32(ll_format, "priority", 0);
+		AMediaFormat_setInt32(ll_format, "vendor.qti-ext-dec-low-latency.enable", 1);
+		AMediaFormat_setInt32(ll_format, "vendor.qti-ext-dec-picture-order.enable", 1);
+		r = AMediaCodec_configure(decoder->codec, ll_format, decoder->window, NULL, 0);
+		AMediaFormat_delete(ll_format);
+		if(r == AMEDIA_OK)
+			CHIAKI_LOGI(decoder->log, "Video decoder configured for low latency");
+		else
+		{
+			CHIAKI_LOGW(decoder->log, "Low-latency decoder configuration failed (%d), retrying without", (int)r);
+			AMediaCodec_delete(decoder->codec);
+			decoder->codec = AMediaCodec_createDecoderByType(mime);
+			if(!decoder->codec)
+			{
+				AMediaFormat_delete(format);
+				goto error_surface;
+			}
+		}
+	}
+	if(r != AMEDIA_OK)
+		r = AMediaCodec_configure(decoder->codec, format, decoder->window, NULL, 0);
 	if(r != AMEDIA_OK)
 	{
 		CHIAKI_LOGE(decoder->log, "AMediaCodec_configure() failed: %d", (int)r);

@@ -64,7 +64,9 @@ class DisplayHostRecyclerViewAdapter(
 					context.getString(R.string.display_host_host, host.host)
 			val id = host.id
 			it.idTextView.text =
-				if(host is PsnDisplayHost && !host.isRegistered)
+				if(host is PsnDisplayHost && !host.device.networkWakeupEnabled)
+					context.getString(R.string.display_host_psn_no_network_wakeup)
+				else if(host is PsnDisplayHost && !host.isRegistered)
 					context.getString(R.string.display_host_psn_unregistered)
 				else if(id != null)
 					context.getString(

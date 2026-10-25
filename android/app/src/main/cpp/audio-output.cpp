@@ -9,6 +9,9 @@
 
 #include <oboe/Oboe.h>
 
+#include <algorithm>
+#include <atomic>
+
 #define BUFFER_CHUNK_SIZE 1024
 #define BUFFER_CHUNKS_COUNT 32
 
@@ -28,12 +31,19 @@ public:
 	void onErrorAfterClose(oboe::AudioStream *stream, oboe::Result error) override;
 };
 
+// Keep audio delay bounded: after a network burst the buffer would otherwise stay full,
+// since playback consumes at the same rate as the stream produces.
+#define AUDIO_MAX_BUFFERED_MS 80
+#define AUDIO_TARGET_BUFFERED_MS 40
+
 struct AudioOutput
 {
 	ChiakiLog *log;
 	oboe::ManagedStream stream;
 	AudioOutputCallback stream_callback;
 	AudioBuffer buf;
+	std::atomic<size_t> buffered{0}; // bytes pushed but not popped
+	std::atomic<size_t> bytes_per_ms{0};
 
 	AudioOutput() : stream_callback(this) {}
 };
@@ -57,6 +67,7 @@ extern "C" void android_chiaki_audio_output_free(void *audio_output)
 extern "C" void android_chiaki_audio_output_settings(uint32_t channels, uint32_t rate, void *audio_output)
 {
 	auto ao = reinterpret_cast<AudioOutput *>(audio_output);
+	ao->bytes_per_ms = channels * sizeof(int16_t) * rate / 1000;
 
 	oboe::AudioStreamBuilder builder;
 	builder.setPerformanceMode(oboe::PerformanceMode::LowLatency)
@@ -85,6 +96,7 @@ extern "C" void android_chiaki_audio_output_frame(int16_t *buf, size_t samples_c
 
 	size_t buf_size = samples_count * sizeof(int16_t);
 	size_t pushed = ao->buf.Push(reinterpret_cast<uint8_t *>(buf), buf_size);
+	ao->buffered += pushed;
 	if(pushed < buf_size)
 		CHIAKI_LOGW(ao->log, "Audio Output Buffer Overflow!");
 }
@@ -101,7 +113,28 @@ oboe::DataCallbackResult AudioOutputCallback::onAudioReady(oboe::AudioStream *st
 	size_t buf_size_requested = static_cast<size_t>(bytes_per_frame * num_frames);
 	auto buf = reinterpret_cast<uint8_t *>(audio_data);
 
+	size_t bytes_per_ms = audio_output->bytes_per_ms;
+	size_t buffered = audio_output->buffered;
+	if(bytes_per_ms > 0 && buffered > AUDIO_MAX_BUFFERED_MS * bytes_per_ms)
+	{
+		// Drop the oldest audio down to the target delay (whole frames only).
+		size_t drop = buffered - AUDIO_TARGET_BUFFERED_MS * bytes_per_ms;
+		drop -= drop % static_cast<size_t>(bytes_per_frame);
+		uint8_t scratch[1024];
+		size_t dropped = 0;
+		while(dropped < drop)
+		{
+			size_t n = audio_output->buf.Pop(scratch, std::min(sizeof(scratch), drop - dropped));
+			if(n == 0)
+				break;
+			dropped += n;
+		}
+		audio_output->buffered -= dropped;
+		CHIAKI_LOGI(audio_output->log, "Audio Output dropped %zu ms to keep latency low", dropped / bytes_per_ms);
+	}
+
 	size_t buf_size_delivered = audio_output->buf.Pop(buf, buf_size_requested);
+	audio_output->buffered -= buf_size_delivered;
 	//CHIAKI_LOGW(audio_output->log, "Delivered %llu", (unsigned long long)buf_size_delivered);
 
 	if(buf_size_delivered < buf_size_requested)

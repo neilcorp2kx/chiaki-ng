@@ -23,6 +23,8 @@ typedef struct android_chiaki_video_decoder_t
 	int32_t target_width;
 	int32_t target_height;
 	ChiakiCodec target_codec;
+	/** Ask the decoder for low-latency output (Android KEY_LOW_LATENCY + vendor keys), default on */
+	bool low_latency;
 	/** Frames rendered to the surface, for stream stats */
 	volatile uint64_t frames_rendered;
 } AndroidChiakiVideoDecoder;

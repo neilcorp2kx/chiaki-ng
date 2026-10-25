@@ -17,6 +17,8 @@
     <string name="action_discover">Discover Consoles Automatically</string>
     <string name="display_host_host">Address: %s</string>
     <string name="display_host_psn">Remote Play over PSN</string>
+    <string name="display_host_psn_no_network_wakeup">Can\'t be woken over PSN from rest mode: turn on "Enable Turning On PS5 from Network" on the console</string>
+    <string name="status_psn_retry">The console did not answer. Trying once more…</string>
     <string name="display_host_psn_unregistered">Tap to register without a PIN and play</string>
     <string name="psn_consoles_error">Could not load your PSN consoles: %s</string>
     <string name="psn_sign_in_needed">Sign in to PSN again to play over PSN.</string>
