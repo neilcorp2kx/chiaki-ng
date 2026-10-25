@@ -42,6 +42,10 @@ class StreamSession(
 	private val _keyboardEvent = MutableLiveData<KeyboardEvent?>(null)
 	/** Console text field events, only with ConnectInfo.enableKeyboard */
 	val keyboardEvent: LiveData<KeyboardEvent?> get() = _keyboardEvent
+	private val _status = MutableLiveData<String?>(null)
+	/** What the connection is doing right now, while connecting */
+	val status: LiveData<String?> get() = _status
+	fun setStatus(status: String) = _status.postValue(status)
 	private val _lightState = MutableLiveData<Event?>(null)
 	/** Latest LedColorEvent or PlayerIndexEvent */
 	val lightState: LiveData<Event?> get() = _lightState
@@ -150,6 +154,7 @@ class StreamSession(
 			is RumbleEvent -> _rumbleState.postValue(event)
 			is KeyboardEvent -> _keyboardEvent.postValue(event)
 			is LedColorEvent, is PlayerIndexEvent -> _lightState.postValue(event)
+			is StatusEvent -> _status.postValue(event.status)
 		}
 	}
 

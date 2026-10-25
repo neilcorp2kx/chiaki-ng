@@ -92,16 +92,33 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved)
 
 JNIEnv *attach_thread_jni()
 {
+	bool attached;
+	return attach_thread_jni_ex(&attached);
+}
+
+JNIEnv *attach_thread_jni_ex(bool *attached)
+{
 	JNIEnv *env;
+	*attached = false;
 	int r = (*global_vm)->GetEnv(global_vm, (void **)&env, JNI_VERSION);
 	if(r == JNI_OK)
 		return env;
 
 	if((*global_vm)->AttachCurrentThread(global_vm, &env, NULL) == 0)
+	{
+		*attached = true;
 		return env;
+	}
 
 	CHIAKI_LOGE(&global_log, "Failed to get JNIEnv from JavaVM or attach");
 	return NULL;
+}
+
+void detach_thread_jni(bool attached)
+{
+	// Only undo our own attach: detaching a Java thread (or a thread attached elsewhere) aborts the VM.
+	if(attached)
+		(*global_vm)->DetachCurrentThread(global_vm);
 }
 
 JNIEXPORT jstring JNICALL JNI_FCN(errorCodeToString)(JNIEnv *env, jobject obj, jint value)
@@ -163,6 +180,10 @@ typedef struct android_chiaki_session_t
 	jmethodID java_session_event_regist_meth;
 	jmethodID java_session_event_keyboard_meth;
 	jmethodID java_session_event_led_meth;
+	jmethodID java_session_event_status_meth;
+	// Connection progress for the UI, taken from key log messages (see android_chiaki_status_log_cb)
+	ChiakiLogCb status_log_orig_cb;
+	void *status_log_orig_user;
 	jmethodID java_session_event_player_index_meth;
 
 	// Haptics as rumble (connect_info.enable_dualsense), like the desktop GUI's PushHapticsFrame()
@@ -229,7 +250,8 @@ static void android_chiaki_event_cb(ChiakiEvent *event, void *user)
 {
 	AndroidChiakiSession *session = user;
 
-	JNIEnv *env = attach_thread_jni();
+	bool jni_attached;
+	JNIEnv *env = attach_thread_jni_ex(&jni_attached);
 	if(!env)
 		return;
 
@@ -297,7 +319,7 @@ static void android_chiaki_event_cb(ChiakiEvent *event, void *user)
 			break;
 	}
 
-	(*global_vm)->DetachCurrentThread(global_vm);
+	detach_thread_jni(jni_attached);
 }
 
 #define HAPTICS_PACKETS_PER_RUMBLE 3 // as RUMBLE_HAPTICS_PACKETS_PER_RUMBLE in the desktop GUI
@@ -343,6 +365,47 @@ static void android_chiaki_haptics_frame(uint8_t *buf, size_t buf_size, void *us
 	event.rumble.left = l8 > 255 ? 255 : (uint8_t)l8;
 	event.rumble.right = r8 > 255 ? 255 : (uint8_t)r8;
 	android_chiaki_event_cb(&event, session);
+}
+
+static void android_chiaki_session_status(AndroidChiakiSession *session, const char *status)
+{
+	bool jni_attached;
+	JNIEnv *env = attach_thread_jni_ex(&jni_attached);
+	if(!env)
+		return;
+	jstring text = E->NewStringUTF(env, status);
+	E->CallVoidMethod(env, session->java_session, session->java_session_event_status_meth, text);
+	E->DeleteLocalRef(env, text);
+	detach_thread_jni(jni_attached);
+}
+
+/** Log messages that mark connection steps, and what the user sees for them */
+static const char *const status_log_steps[][2] = {
+	{ "REGIST - Starting RUDP session", "Registering with the console…" },
+	{ "Console auto registered successfully", "Registered. Connecting again to stream…" },
+	{ "Starting session request", "Requesting a Remote Play session…" },
+	{ "Sending session request", "Requesting a Remote Play session…" },
+	{ "Ctrl connected", "The console accepted the connection…" },
+	{ "Punching hole for data connection", "Opening the data connection through PSN…" },
+	{ "Starting Senkusha", "Measuring the network…" },
+	{ "Switching to Stream Connection", "Starting the video stream…" },
+	{ "StreamConnection successfully received streaminfo", "Waiting for the first picture…" },
+};
+
+static void android_chiaki_status_log_cb(ChiakiLogLevel level, const char *msg, void *user)
+{
+	AndroidChiakiSession *session = user;
+	session->status_log_orig_cb(level, msg, session->status_log_orig_user);
+	if(!msg || !session->java_session_event_status_meth)
+		return;
+	for(size_t i = 0; i < sizeof(status_log_steps) / sizeof(status_log_steps[0]); i++)
+	{
+		if(strstr(msg, status_log_steps[i][0]))
+		{
+			android_chiaki_session_status(session, status_log_steps[i][1]);
+			return;
+		}
+	}
 }
 
 JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject result, jobject connect_info_obj, jstring log_file_str, jboolean log_verbose, jobject java_session)
@@ -512,6 +575,11 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	session->java_session_event_regist_meth = E->GetMethodID(env, session->java_session_class, "eventRegist", "(L"BASE_PACKAGE"/RegistHost;)V");
 	session->java_session_event_keyboard_meth = E->GetMethodID(env, session->java_session_class, "eventKeyboard", "(ILjava/lang/String;)V");
 	session->java_session_event_led_meth = E->GetMethodID(env, session->java_session_class, "eventLedColor", "(III)V");
+	session->java_session_event_status_meth = E->GetMethodID(env, session->java_session_class, "eventStatus", "(Ljava/lang/String;)V");
+	session->status_log_orig_cb = log->cb;
+	session->status_log_orig_user = log->user;
+	log->cb = android_chiaki_status_log_cb;
+	log->user = session;
 	session->java_session_event_player_index_meth = E->GetMethodID(env, session->java_session_class, "eventPlayerIndex", "(I)V");
 	session->haptics_rumble_percent = haptics_rumble_percent;
 	if(haptics_rumble_percent > 0)
@@ -582,6 +650,7 @@ JNIEXPORT void JNICALL JNI_FCN(sessionFree)(JNIEnv *env, jobject obj, jlong ptr)
 	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
 	if(!session)
 		return;
+	session->java_session_event_status_meth = NULL; // no more status events while tearing down
 	CHIAKI_LOGI(session->log, "Shutting down JNI Session");
 	android_chiaki_audio_input_free(session->audio_input);
 	chiaki_opus_encoder_fini(&session->opus_encoder);
@@ -595,6 +664,9 @@ JNIEXPORT void JNICALL JNI_FCN(sessionFree)(JNIEnv *env, jobject obj, jlong ptr)
 	E->DeleteGlobalRef(env, session->java_regist_host_class);
 	pthread_mutex_destroy(&session->state_mutex);
 	CHIAKI_LOGI(session->log, "JNI Session has quit");
+	// Restore the file log, android_chiaki_file_log_fini() needs its own user pointer.
+	session->log->cb = session->status_log_orig_cb;
+	session->log->user = session->status_log_orig_user;
 	android_chiaki_file_log_fini(session->log);
 	free(session->log);
 	free(session);
@@ -616,10 +688,12 @@ static void *android_chiaki_psn_connect_thread(void *user)
 	ChiakiHolepunchSession hp = session->holepunch_session;
 	ChiakiHolepunchConsoleType console_type = session->session.connect_info.ps5 ? CHIAKI_HOLEPUNCH_CONSOLE_TYPE_PS5 : CHIAKI_HOLEPUNCH_CONSOLE_TYPE_PS4;
 	const char *step = "UPnP discovery";
+	android_chiaki_session_status(session, "Checking the network…");
 	ChiakiErrorCode err = chiaki_holepunch_upnp_discover(hp);
 	if(err != CHIAKI_ERR_SUCCESS)
 		CHIAKI_LOGW(session->log, "PSN UPnP discovery failed, continuing without UPnP");
 	step = "creating the PSN session";
+	android_chiaki_session_status(session, "Creating a PSN session…");
 	err = chiaki_holepunch_session_create(hp);
 	if(err == CHIAKI_ERR_SUCCESS)
 	{
@@ -629,11 +703,13 @@ static void *android_chiaki_psn_connect_thread(void *user)
 	if(err == CHIAKI_ERR_SUCCESS)
 	{
 		step = "starting the session on the console";
+		android_chiaki_session_status(session, "Asking the console to start Remote Play through PSN…\nThis can take up to 30 seconds if it is in rest mode.");
 		err = chiaki_holepunch_session_start(hp, session->psn_duid, console_type);
 	}
 	if(err == CHIAKI_ERR_SUCCESS)
 	{
 		step = "connecting to the console";
+		android_chiaki_session_status(session, "Connecting to the console through PSN…");
 		err = chiaki_holepunch_session_punch_hole(hp, CHIAKI_HOLEPUNCH_PORT_TYPE_CTRL);
 	}
 
@@ -917,7 +993,8 @@ static void android_discovery_service_cb(ChiakiDiscoveryHost *hosts, size_t host
 
 	CHIAKI_LOGI(&global_log, "JNI Discovery Callback got %llu hosts", (unsigned long long)hosts_count);
 
-	JNIEnv *env = attach_thread_jni();
+	bool jni_attached;
+	JNIEnv *env = attach_thread_jni_ex(&jni_attached);
 	if(!env)
 		return;
 
@@ -957,7 +1034,7 @@ static void android_discovery_service_cb(ChiakiDiscoveryHost *hosts, size_t host
 
 	E->CallVoidMethod(env, service->java_service, service->java_service_hosts_updated_meth, r);
 
-	(*global_vm)->DetachCurrentThread(global_vm);
+	detach_thread_jni(jni_attached);
 }
 
 static ChiakiErrorCode sockaddr_from_java(JNIEnv *env, jobject /*InetSocketAddress*/ sockaddr_obj, struct sockaddr **addr, size_t *addr_size)
@@ -1131,7 +1208,8 @@ static void android_chiaki_regist_cb(ChiakiRegistEvent *event, void *user)
 {
 	AndroidChiakiRegist *regist = user;
 
-	JNIEnv *env = attach_thread_jni();
+	bool jni_attached;
+	JNIEnv *env = attach_thread_jni_ex(&jni_attached);
 	if(!env)
 		return;
 
@@ -1156,7 +1234,7 @@ static void android_chiaki_regist_cb(ChiakiRegistEvent *event, void *user)
 	if(java_event)
 		E->CallVoidMethod(env, regist->java_regist, regist->java_regist_event_meth, java_event);
 
-	(*global_vm)->DetachCurrentThread(global_vm);
+	detach_thread_jni(jni_attached);
 }
 
 static void android_chiaki_regist_fini_partial(JNIEnv *env, AndroidChiakiRegist *regist)

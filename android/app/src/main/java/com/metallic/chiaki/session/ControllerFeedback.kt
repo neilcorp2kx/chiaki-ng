@@ -23,7 +23,7 @@ import kotlin.math.max
  * Uses the per-device vibrators and lights of Android 12+ (InputDevice.getVibratorManager(),
  * InputDevice.getLightsManager()). Older Android or controllers without them use the phone.
  */
-class ControllerFeedback(private val context: Context)
+class ControllerFeedback(private val context: Context, private val onControllerChanged: ((InputDevice?) -> Unit)? = null)
 {
 	companion object
 	{
@@ -60,7 +60,8 @@ class ControllerFeedback(private val context: Context)
 			lightsSession?.close()
 			lightsSession = null
 			device = found
-			Log.i(TAG, "Controller: ${found?.name ?: "none"}")
+			Log.i(TAG, "Controller: ${found?.name ?: "none"}, motors: ${controllerVibrators.size}")
+			onControllerChanged?.invoke(found)
 		}
 	}
 
@@ -73,6 +74,9 @@ class ControllerFeedback(private val context: Context)
 	}
 
 	val controllerHasRumble get() = controllerVibrators.isNotEmpty()
+
+	/** For the stats overlay, e.g. "GameSir G8 · 2 motors" */
+	val description: String get() = device?.let { "${it.name} · ${controllerVibrators.size} motor(s)" } ?: "no controller"
 
 	/** left = strong motor, right = weak motor, 0-255 each */
 	fun rumble(left: Int, right: Int)

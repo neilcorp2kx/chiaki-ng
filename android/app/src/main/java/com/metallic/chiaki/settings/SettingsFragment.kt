@@ -34,6 +34,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.videoFilterStatsKey -> preferences.videoFilterStats
 		preferences.keyboardEnabledKey -> preferences.keyboardEnabled
 		preferences.controllerMotionKey -> preferences.controllerMotion
+		preferences.hideTouchWithControllerKey -> preferences.hideTouchWithController
 		else -> defValue
 	}
 
@@ -49,6 +50,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 			preferences.videoFilterStatsKey -> preferences.videoFilterStats = value
 			preferences.keyboardEnabledKey -> preferences.keyboardEnabled = value
 			preferences.controllerMotionKey -> preferences.controllerMotion = value
+			preferences.hideTouchWithControllerKey -> preferences.hideTouchWithController = value
 		}
 	}
 

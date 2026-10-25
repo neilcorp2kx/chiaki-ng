@@ -154,7 +154,11 @@ class StreamActivity : AppCompatActivity()
 		onBackPressedDispatcher.addCallback(this) { leaveStream() }
 		adjustStreamViewAspect()
 
-		val feedback = ControllerFeedback(this)
+		val feedback = ControllerFeedback(this) { viewModel.setControllerConnected(it != null) }
+		viewModel.setControllerConnected(feedback.controller != null)
+		viewModel.session.status.observe(this, Observer { status ->
+			binding.statusTextView.text = status ?: ""
+		})
 		controllerFeedback = feedback
 		if(Preferences(this).rumbleEnabled)
 		{
@@ -315,6 +319,7 @@ class StreamActivity : AppCompatActivity()
 			lines += String.format("%dx%d · %.0f fps · %.1f Mbit/s · loss %.1f%% · RTT %.0f ms%s",
 				profile.width, profile.height, fps, stats.bitrateMbps, stats.packetLoss * 100.0, stats.rttMs,
 				if(viewModel.session.connectInfo.isPsn) " · PSN" else " · LAN")
+			controllerFeedback?.let { lines += "Controller: ${it.description}" }
 		}
 		filterStats?.let { lines += it }
 		binding.filterStatsTextView.text = lines.joinToString("\n")
@@ -326,9 +331,11 @@ class StreamActivity : AppCompatActivity()
 		val session = viewModel.session
 		if(!session.connectInfo.isPsn)
 		{
+			session.setStatus(getString(R.string.status_connecting_lan))
 			session.resume()
 			return
 		}
+		session.setStatus(getString(R.string.status_connecting_psn))
 		lifecycleScope.launch {
 			try
 			{
@@ -352,7 +359,7 @@ class StreamActivity : AppCompatActivity()
 			controlsJob = fragment.controllerState
 				.onEach { viewModel.input.touchControllerState = it }
 				.launchIn(lifecycleScope)
-			fragment.onScreenControlsEnabled = viewModel.onScreenControlsEnabled
+			fragment.onScreenControlsEnabled = viewModel.onScreenControlsVisible
 			if(fragment is TouchpadOnlyFragment)
 				fragment.touchpadOnlyEnabled = viewModel.touchpadOnlyEnabled
 		}
@@ -457,6 +464,7 @@ class StreamActivity : AppCompatActivity()
 	private fun stateChanged(state: StreamState)
 	{
 		binding.progressBar.visibility = if(state == StreamStateConnecting) View.VISIBLE else View.GONE
+		binding.statusTextView.visibility = if(state == StreamStateConnecting) View.VISIBLE else View.GONE
 
 		when(state)
 		{

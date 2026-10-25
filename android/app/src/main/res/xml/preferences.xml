@@ -44,6 +44,12 @@
             app:icon="@drawable/ic_motion" />
 
         <SwitchPreference
+            app:key="@string/preferences_hide_touch_with_controller_key"
+            app:title="@string/preferences_hide_touch_with_controller_title"
+            app:summary="@string/preferences_hide_touch_with_controller_summary"
+            app:icon="@drawable/ic_gamepad" />
+
+        <SwitchPreference
             app:key="@string/preferences_controller_motion_key"
             app:title="@string/preferences_controller_motion_title"
             app:summary="@string/preferences_controller_motion_summary"

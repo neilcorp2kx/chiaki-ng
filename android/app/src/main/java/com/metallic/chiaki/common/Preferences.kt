@@ -229,6 +229,11 @@ class Preferences(context: Context)
 	/** For ConnectInfo.hapticsRumblePercent: 0 when rumble is off */
 	val hapticsRumblePercent get() = if(rumbleEnabled) hapticsRumble.percent else 0
 
+	val hideTouchWithControllerKey get() = resources.getString(R.string.preferences_hide_touch_with_controller_key)
+	var hideTouchWithController
+		get() = sharedPreferences.getBoolean(hideTouchWithControllerKey, true)
+		set(value) { sharedPreferences.edit().putBoolean(hideTouchWithControllerKey, value).apply() }
+
 	val controllerMotionKey get() = resources.getString(R.string.preferences_controller_motion_key)
 	var controllerMotion
 		get() = sharedPreferences.getBoolean(controllerMotionKey, true)

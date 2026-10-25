@@ -45,6 +45,17 @@ class StreamViewModel(val application: Application, val connectInfo: ConnectInfo
 	private var _onScreenControlsEnabled = MutableLiveData<Boolean>(preferences.onScreenControlsEnabled)
 	val onScreenControlsEnabled: LiveData<Boolean> get() = _onScreenControlsEnabled
 
+	private val _controllerConnected = MutableLiveData(false)
+	fun setControllerConnected(connected: Boolean) { _controllerConnected.value = connected }
+
+	/** Touch controls are shown when enabled, and hidden while a game controller is connected */
+	val onScreenControlsVisible: LiveData<Boolean> = MediatorLiveData<Boolean>().also { visible ->
+		fun update() { visible.value = (_onScreenControlsEnabled.value ?: true) &&
+				!(preferences.hideTouchWithController && _controllerConnected.value == true) }
+		visible.addSource(_onScreenControlsEnabled) { update() }
+		visible.addSource(_controllerConnected) { update() }
+	}
+
 	private var _touchpadOnlyEnabled = MutableLiveData<Boolean>(preferences.touchpadOnlyEnabled)
 	val touchpadOnlyEnabled: LiveData<Boolean> get() = _touchpadOnlyEnabled
 

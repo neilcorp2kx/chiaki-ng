@@ -364,6 +364,8 @@ data class KeyboardEvent(val type: Type, val text: String?): Event()
 {
 	enum class Type { OPEN, TEXT_CHANGE, REMOTE_CLOSE }
 }
+/** Human-readable connection step, e.g. "Requesting a Remote Play session…" */
+data class StatusEvent(val status: String): Event()
 /** Lightbar color requested by the console (DualSense clients) */
 data class LedColorEvent(val red: Int, val green: Int, val blue: Int): Event()
 /** Player number requested by the console (DualSense clients) */
@@ -433,6 +435,11 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean)
 	private fun eventRegist(host: RegistHost)
 	{
 		event(SessionRegistEvent(host))
+	}
+
+	private fun eventStatus(status: String)
+	{
+		event(StatusEvent(status))
 	}
 
 	private fun eventLedColor(red: Int, green: Int, blue: Int)
