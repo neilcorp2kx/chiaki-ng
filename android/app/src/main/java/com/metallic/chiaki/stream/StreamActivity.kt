@@ -189,8 +189,9 @@ class StreamActivity : AppCompatActivity()
 		view.isVisible = true
 		view.setEGLContextClientVersion(3)
 		view.preserveEGLContextOnPause = true
-		// Render at stream resolution, the compositor scales to the view size.
-		view.holder.setFixedSize(videoProfile.width, videoProfile.height)
+		// Render at the view size and scale in the shader. A fixed stream-size buffer relies on the
+		// compositor to scale it, but EGL surfaces keep the "freeze" scaling mode on some devices
+		// (seen on a Galaxy Z Fold7), which shows the buffer unscaled in a corner.
 		val renderer = VideoFilterRenderer(view, videoProfile.width, videoProfile.height, settings,
 			onSurfaceChanged = { surface, releaseOld ->
 				uiVisibilityHandler.post {

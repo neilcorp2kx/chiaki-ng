@@ -23,8 +23,8 @@ import kotlin.math.max
  * Without filters the decoder renders straight into a SurfaceView (zero copy).
  * With filters it renders into a SurfaceTexture, and one fragment shader pass
  * applies debanding and/or RCAS sharpening. The GL surface is sized to the
- * stream resolution, so the shader cost does not grow with the display size.
- * The system compositor scales the result to the view.
+ * view size; the filters work in stream pixels (u_texelX/u_texelY) and the same pass scales
+ * the picture to the view.
  */
 data class VideoFilterSettings(
 	/** 0 disables debanding */

@@ -75,7 +75,6 @@ class VideoFilterPreviewActivity: AppCompatActivity()
 			glView = view
 			view.setEGLContextClientVersion(3)
 			view.preserveEGLContextOnPause = true
-			view.holder.setFixedSize(width, height)
 			val renderer = VideoFilterRenderer(view, width, height, settings,
 				onSurfaceChanged = { surface, releaseOld ->
 					handler.post {
