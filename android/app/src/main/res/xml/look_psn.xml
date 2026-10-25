@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A settings page of the Status light and Console home looks (SettingsCategory). Same keys as preferences.xml. -->
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+    <Preference
+        app:key="psn_account"
+        app:title="@string/settings_category_psn"
+        app:summary="@string/preferences_psn_account_signed_out" />
+
+    <PreferenceCategory
+        app:key="psn_consoles"
+        app:title="@string/settings_group_psn_consoles"
+        app:isPreferenceVisible="false" />
+</PreferenceScreen>

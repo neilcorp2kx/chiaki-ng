@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A settings page of the Status light and Console home looks (SettingsCategory). Same keys as preferences.xml. -->
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory app:title="@string/settings_group_logs">
+        <Preference
+            app:key="logs"
+            app:title="@string/settings_logs_title"
+            app:summary="@string/preferences_logs_summary"
+            app:fragment="com.metallic.chiaki.settings.SettingsLogsFragment" />
+        <SwitchPreference
+            app:key="@string/preferences_log_verbose_key"
+            app:title="@string/settings_verbose_title"
+            app:summary="@string/settings_verbose_summary" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/settings_group_backup">
+        <Preference
+            app:key="@string/preferences_export_settings_key"
+            app:title="@string/settings_export_title"
+            app:summary="@string/settings_export_summary" />
+        <Preference
+            app:key="@string/preferences_import_settings_key"
+            app:title="@string/settings_import_title"
+            app:summary="@string/settings_import_summary" />
+    </PreferenceCategory>
+</PreferenceScreen>

@@ -31,10 +31,13 @@ import android.content.Intent
 import com.metallic.chiaki.common.Preferences
 import com.metallic.chiaki.lib.ConnectInfo
 import com.metallic.chiaki.stream.StreamActivity
+import com.metallic.chiaki.settings.SettingsActivity
+import com.metallic.chiaki.regist.RegistActivity
+import com.metallic.chiaki.manualconsole.EditManualConsoleActivity
 
 /**
  * Debug builds only: the looks' screens with sample consoles, for screenshots without a console.
- * Extras: look (status_light, console_home), screen (home, empty, connect, stream, realstream),
+ * Extras: look (status_light, console_home), screen (home, empty, connect, stream, realstream, settings [category], regist, manual),
  * psn (connect over PSN, default true), step (freeze the connect screen at this status), controller.
  */
 class ThemePreviewActivity: AppCompatActivity()
@@ -47,6 +50,21 @@ class ThemePreviewActivity: AppCompatActivity()
 		val style = AppStyle.fromValue(intent.getStringExtra("look") ?: AppStyle.CONSOLE_HOME.value)
 			.let { if(it.isClassic) AppStyle.CONSOLE_HOME else it }
 		val screen = intent.getStringExtra("screen") ?: "home"
+		if(screen == "settings" || screen == "regist" || screen == "manual")
+		{
+			// The real screens, in the look stored in the preferences
+			super.onCreate(savedInstanceState)
+			startActivity(when(screen)
+			{
+				"settings" -> Intent(this, SettingsActivity::class.java).also { i ->
+					intent.getStringExtra("category")?.let { i.putExtra(SettingsActivity.EXTRA_CATEGORY, it) }
+				}
+				"regist" -> Intent(this, RegistActivity::class.java)
+				else -> Intent(this, EditManualConsoleActivity::class.java)
+			})
+			finish()
+			return
+		}
 		if(screen == "realstream")
 		{
 			// The real stream screen, connecting to an unreachable test address (RFC 5737)
@@ -77,6 +95,7 @@ class ThemePreviewActivity: AppCompatActivity()
 			addConsole = { toast("Add a console") },
 			toggleDiscovery = { toast("Find on network") },
 			openSettings = { toast("Settings") },
+			openStreamSettings = { toast("Stream settings") },
 			registersOverPsn = { it.name == "Bedroom PS5" }))
 		this.home = home
 		setContentView(home.root)

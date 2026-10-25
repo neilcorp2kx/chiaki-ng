@@ -17,11 +17,13 @@ enum class AppStyle(
 	val value: String,
 	@StringRes val title: Int,
 	@StyleRes val mainTheme: Int,
-	@StyleRes val streamTheme: Int)
+	@StyleRes val streamTheme: Int,
+	/** Register, add by address and their progress screens */
+	@StyleRes val formTheme: Int)
 {
-	CLASSIC("classic", R.string.preferences_app_style_classic, R.style.AppTheme, R.style.StreamTheme),
-	STATUS_LIGHT("status_light", R.string.preferences_app_style_status_light, R.style.StatusLightTheme, R.style.StreamTheme_StatusLight),
-	CONSOLE_HOME("console_home", R.string.preferences_app_style_console_home, R.style.ConsoleHomeTheme, R.style.StreamTheme_ConsoleHome);
+	CLASSIC("classic", R.string.preferences_app_style_classic, R.style.AppTheme, R.style.StreamTheme, R.style.MageTheme),
+	STATUS_LIGHT("status_light", R.string.preferences_app_style_status_light, R.style.StatusLightTheme, R.style.StreamTheme_StatusLight, R.style.MageTheme_StatusLight),
+	CONSOLE_HOME("console_home", R.string.preferences_app_style_console_home, R.style.ConsoleHomeTheme, R.style.StreamTheme_ConsoleHome, R.style.MageTheme_ConsoleHome);
 
 	val isClassic get() = this == CLASSIC
 
@@ -32,12 +34,20 @@ enum class AppStyle(
 	}
 }
 
-/** Sets the theme of the chosen look. Call before super.onCreate(). */
-fun Activity.applyAppStyle(stream: Boolean = false): AppStyle
+/** Which kind of screen an activity is, for its theme in each look */
+enum class LookScreen { MAIN, STREAM, FORM }
+
+/** Sets the theme of the chosen look. Call before super.onCreate(). Classic keeps the manifest's theme. */
+fun Activity.applyAppStyle(screen: LookScreen = LookScreen.MAIN): AppStyle
 {
 	val style = Preferences(this).appStyle
 	if(!style.isClassic)
-		setTheme(if(stream) style.streamTheme else style.mainTheme)
+		setTheme(when(screen)
+		{
+			LookScreen.MAIN -> style.mainTheme
+			LookScreen.STREAM -> style.streamTheme
+			LookScreen.FORM -> style.formTheme
+		})
 	return style
 }
 

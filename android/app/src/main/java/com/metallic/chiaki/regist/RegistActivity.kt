@@ -3,6 +3,10 @@
 package com.metallic.chiaki.regist
 
 import com.metallic.chiaki.common.ext.padForSystemBars
+import com.metallic.chiaki.looks.LookScreen
+import com.metallic.chiaki.looks.applyAppStyle
+import com.metallic.chiaki.looks.applyLookTitleFont
+import com.metallic.chiaki.looks.centerOnWideScreen
 import android.content.Intent
 import android.os.Bundle
 import android.util.Base64
@@ -52,9 +56,12 @@ class RegistActivity: AppCompatActivity(), RevealActivity
 
 	override fun onCreate(savedInstanceState: Bundle?)
 	{
+		applyAppStyle(LookScreen.FORM)
 		super.onCreate(savedInstanceState)
 		binding = ActivityRegistBinding.inflate(layoutInflater)
 		setContentView(binding.root)
+		binding.titleTextView.applyLookTitleFont()
+		binding.rootLayout.getChildAt(0)?.centerOnWideScreen()
 		binding.root.padForSystemBars()
 		handleReveal()
 

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A settings page of the Status light and Console home looks (SettingsCategory). Same keys as preferences.xml. -->
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory app:title="@string/settings_group_at_home">
+        <com.metallic.chiaki.settings.ValueListPreference
+            app:key="@string/preferences_resolution_key"
+            app:title="@string/preferences_resolution_title"
+            app:summary="@string/settings_resolution_summary" />
+        <com.metallic.chiaki.settings.ValueListPreference
+            app:key="@string/preferences_fps_key"
+            app:title="@string/settings_fps_title"
+            app:summary="@string/settings_fps_summary" />
+        <EditTextPreference
+            app:key="@string/preferences_bitrate_key"
+            app:title="@string/preferences_bitrate_title" />
+        <com.metallic.chiaki.settings.ValueListPreference
+            app:key="@string/preferences_codec_key"
+            app:title="@string/preferences_codec_title"
+            app:summary="@string/settings_codec_summary" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/settings_group_over_psn">
+        <com.metallic.chiaki.settings.ValueListPreference
+            app:key="@string/preferences_remote_resolution_key"
+            app:title="@string/preferences_resolution_title"
+            app:summary="@string/settings_remote_resolution_summary" />
+        <EditTextPreference
+            app:key="@string/preferences_remote_bitrate_key"
+            app:title="@string/preferences_bitrate_title" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/settings_group_leaving">
+        <com.metallic.chiaki.settings.ValueListPreference
+            app:key="@string/preferences_leave_action_key"
+            app:title="@string/settings_leave_title"
+            app:summary="@string/settings_leave_summary" />
+    </PreferenceCategory>
+</PreferenceScreen>

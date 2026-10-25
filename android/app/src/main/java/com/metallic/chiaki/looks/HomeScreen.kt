@@ -14,6 +14,7 @@ class HomeActions(
 	val addConsole: (View) -> Unit,
 	val toggleDiscovery: () -> Unit,
 	val openSettings: () -> Unit,
+	val openStreamSettings: () -> Unit,
 	/** The console is not registered, but on the signed-in PSN account, so it registers without a PIN */
 	val registersOverPsn: (DisplayHost) -> Boolean)
 

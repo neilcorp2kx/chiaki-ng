@@ -24,4 +24,11 @@
     <attr name="streamBandBackground" format="reference" />
     <attr name="streamCardBackground" format="reference" />
     <attr name="streamTextColor" format="color" />
+    <!-- Settings and forms of the Status light and Console home looks -->
+    <attr name="lookTitleFont" format="reference" />
+    <attr name="lookSettingsBackground" format="reference" />
+    <attr name="lookRowBackground" format="reference" />
+    <attr name="lookRailItemBackground" format="reference" />
+    <attr name="lookSheetBackground" format="reference" />
+    <attr name="lookDividerColor" format="color" />
 </resources>

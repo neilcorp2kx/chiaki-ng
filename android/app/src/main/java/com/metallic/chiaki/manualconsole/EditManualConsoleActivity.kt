@@ -3,6 +3,10 @@
 package com.metallic.chiaki.manualconsole
 
 import com.metallic.chiaki.common.ext.padForSystemBars
+import com.metallic.chiaki.looks.LookScreen
+import com.metallic.chiaki.looks.applyAppStyle
+import com.metallic.chiaki.looks.applyLookTitleFont
+import com.metallic.chiaki.looks.centerOnWideScreen
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -35,9 +39,12 @@ class EditManualConsoleActivity: AppCompatActivity(), RevealActivity
 
 	override fun onCreate(savedInstanceState: Bundle?)
 	{
+		applyAppStyle(LookScreen.FORM)
 		super.onCreate(savedInstanceState)
 		binding = ActivityEditManualBinding.inflate(layoutInflater)
 		setContentView(binding.root)
+		binding.titleTextView.applyLookTitleFont()
+		binding.rootLayout.getChildAt(0)?.centerOnWideScreen()
 		binding.root.padForSystemBars()
 		handleReveal()
 

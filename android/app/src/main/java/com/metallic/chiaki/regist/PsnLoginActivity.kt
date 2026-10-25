@@ -3,6 +3,8 @@
 package com.metallic.chiaki.regist
 
 import com.metallic.chiaki.common.ext.padForSystemBars
+import com.metallic.chiaki.looks.LookScreen
+import com.metallic.chiaki.looks.applyAppStyle
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Bitmap
@@ -53,6 +55,7 @@ class PsnLoginActivity: AppCompatActivity()
 	@SuppressLint("SetJavaScriptEnabled")
 	override fun onCreate(savedInstanceState: Bundle?)
 	{
+		applyAppStyle(LookScreen.MAIN)
 		super.onCreate(savedInstanceState)
 		title = getString(R.string.title_psn_login)
 

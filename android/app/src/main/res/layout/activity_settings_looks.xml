@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings in the Status light and Console home looks: categories on one side, the chosen page on the other.
+     Narrow screens show one at a time. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/lookSettingsBackground">
+
+    <LinearLayout
+        android:id="@+id/contentLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/railLayout"
+            android:layout_width="300dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:paddingTop="20dp">
+
+            <TextView
+                android:id="@+id/railTitleTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="24dp"
+                android:accessibilityHeading="true"
+                android:fontFamily="?attr/lookTitleFont"
+                android:text="@string/title_settings"
+                android:textColor="?android:attr/textColorPrimary"
+                android:textSize="28sp" />
+
+            <TextView
+                android:id="@+id/railSubtitleTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="24dp"
+                android:layout_marginTop="2dp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:textSize="13sp"
+                tools:text="Signed in to PSN" />
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="12dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:paddingBottom="16dp">
+
+                <LinearLayout
+                    android:id="@+id/categoriesLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp" />
+            </ScrollView>
+        </LinearLayout>
+
+        <View
+            android:id="@+id/railDivider"
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="?attr/lookDividerColor" />
+
+        <LinearLayout
+            android:id="@+id/paneLayout"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="72dp"
+                android:orientation="horizontal"
+                android:paddingStart="12dp"
+                android:paddingTop="12dp"
+                android:paddingEnd="24dp">
+
+                <ImageView
+                    android:id="@+id/backButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/lookRowBackground"
+                    android:clickable="true"
+                    android:contentDescription="@string/settings_back"
+                    android:focusable="true"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_look_back"
+                    android:visibility="gone"
+                    app:tint="?android:attr/textColorPrimary"
+                    xmlns:app="http://schemas.android.com/apk/res-auto" />
+
+                <TextView
+                    android:id="@+id/paneTitleTextView"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:accessibilityHeading="true"
+                    android:ellipsize="end"
+                    android:fontFamily="?attr/lookTitleFont"
+                    android:maxLines="1"
+                    android:textColor="?android:attr/textColorPrimary"
+                    android:textSize="24sp"
+                    tools:text="Picture" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:id="@+id/settingsFragment"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

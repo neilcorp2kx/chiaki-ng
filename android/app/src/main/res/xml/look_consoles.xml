@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A settings page of the Status light and Console home looks (SettingsCategory). Same keys as preferences.xml. -->
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+    <Preference
+        app:key="registered_hosts"
+        app:title="@string/settings_registered_title"
+        app:summary=" "
+        app:fragment="com.metallic.chiaki.settings.SettingsRegisteredHostsFragment" />
+
+    <PreferenceCategory app:title="@string/settings_group_this_network">
+        <SwitchPreference
+            app:key="@string/preferences_discovery_enabled_key"
+            app:title="@string/settings_find_title"
+            app:summary="@string/settings_find_summary" />
+
+        <Preference
+            app:key="add_manual_console"
+            app:title="@string/settings_add_manual_title"
+            app:summary="@string/settings_add_manual_summary" />
+    </PreferenceCategory>
+</PreferenceScreen>

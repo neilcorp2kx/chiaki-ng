@@ -89,6 +89,9 @@ class MainActivity : AppCompatActivity()
 			addConsole = this::showAddConsole,
 			toggleDiscovery = { viewModel.discoveryManager.active = !(viewModel.discoveryActive.value ?: false) },
 			openSettings = { startActivity(Intent(this, SettingsActivity::class.java)) },
+			openStreamSettings = {
+				startActivity(Intent(this, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_CATEGORY, "stream"))
+			},
 			registersOverPsn = { host -> !host.isRegistered && host.isPS5 && viewModel.psnDeviceNamed(host.name) != null }))
 		this.home = home
 		setContentView(home.root)
@@ -250,6 +253,11 @@ class MainActivity : AppCompatActivity()
 	{
 		super.onStart()
 		viewModel.discoveryManager.resume()
+		// "Find consoles on this network" may have changed in the settings
+		Preferences(this).discoveryEnabled.let { wanted ->
+			if(viewModel.discoveryActive.value != null && viewModel.discoveryActive.value != wanted)
+				viewModel.discoveryManager.active = wanted
+		}
 		viewModel.refreshPsnConsoles()
 	}
 

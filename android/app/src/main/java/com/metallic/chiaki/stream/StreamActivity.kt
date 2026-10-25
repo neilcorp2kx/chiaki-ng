@@ -54,6 +54,7 @@ import com.metallic.chiaki.looks.ConnectProgress
 import com.metallic.chiaki.looks.ConnectScreen
 import com.metallic.chiaki.looks.StreamLook
 import com.metallic.chiaki.looks.applyAppStyle
+import com.metallic.chiaki.looks.LookScreen
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -96,7 +97,7 @@ class StreamActivity : AppCompatActivity()
 
 	override fun onCreate(savedInstanceState: Bundle?)
 	{
-		appStyle = applyAppStyle(stream = true)
+		appStyle = applyAppStyle(LookScreen.STREAM)
 		super.onCreate(savedInstanceState)
 
 		val connectInfo = IntentCompat.getParcelableExtra(intent, EXTRA_CONNECT_INFO, ConnectInfo::class.java)

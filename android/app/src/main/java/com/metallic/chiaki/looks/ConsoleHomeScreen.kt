@@ -41,7 +41,9 @@ class ConsoleHomeScreen(activity: Activity, actions: HomeActions): HomeScreen(ac
 	{
 		binding.findButton.setOnClickListener { actions.toggleDiscovery() }
 		binding.settingsButton.setOnClickListener { actions.openSettings() }
-		binding.secondaryButton.setOnClickListener { actions.openSettings() }
+		binding.secondaryButton.setOnClickListener {
+			if(items.getOrNull(chosenIndex) == null) actions.openSettings() else actions.openStreamSettings()
+		}
 		binding.root.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
 			val narrow = v.width / v.resources.displayMetrics.density < 600f
 			val size = if(narrow) 40f else 54f

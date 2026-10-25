@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A settings page of the Status light and Console home looks (SettingsCategory). Same keys as preferences.xml. -->
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory app:title="@string/settings_group_buttons">
+        <SwitchPreference
+            app:key="@string/preferences_swap_cross_moon_key"
+            app:title="@string/settings_swap_title"
+            app:summary="@string/preferences_swap_cross_moon_summary" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/settings_group_feedback">
+        <SwitchPreference
+            app:key="@string/preferences_rumble_enabled_key"
+            app:title="@string/preferences_rumble_enabled_title"
+            app:summary="@string/preferences_rumble_enabled_summary" />
+        <com.metallic.chiaki.settings.ValueListPreference
+            app:key="@string/preferences_haptics_rumble_key"
+            app:title="@string/settings_haptics_title"
+            app:summary="@string/settings_haptics_summary" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/settings_group_motion">
+        <SwitchPreference
+            app:key="@string/preferences_motion_enabled_key"
+            app:title="@string/settings_motion_title"
+            app:summary="@string/preferences_motion_enabled_summary" />
+        <SwitchPreference
+            app:key="@string/preferences_controller_motion_key"
+            app:title="@string/settings_controller_motion_title"
+            app:summary="@string/preferences_controller_motion_summary" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/settings_group_touch">
+        <SwitchPreference
+            app:key="@string/preferences_hide_touch_with_controller_key"
+            app:title="@string/settings_hide_touch_title"
+            app:summary="@string/preferences_hide_touch_with_controller_summary" />
+        <SwitchPreference
+            app:key="@string/preferences_button_haptic_enabled_key"
+            app:title="@string/settings_touch_haptics_title"
+            app:summary="@string/preferences_button_haptic_enabled_summary" />
+    </PreferenceCategory>
+</PreferenceScreen>

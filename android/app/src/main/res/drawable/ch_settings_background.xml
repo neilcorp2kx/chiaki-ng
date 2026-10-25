@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Console home settings: midnight with two soft pools of light -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item><color android:color="@color/ch_midnight" /></item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:type="radial" android:gradientRadius="70%p" android:centerX="0.85" android:centerY="0.08"
+                android:startColor="#474C8DFF" android:endColor="#004C8DFF" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:type="radial" android:gradientRadius="60%p" android:centerX="0.1" android:centerY="1.0"
+                android:startColor="#731E46AA" android:endColor="#001E46AA" />
+        </shape>
+    </item>
+</layer-list>

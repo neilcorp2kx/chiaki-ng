@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A settings page of the Status light and Console home looks (SettingsCategory). Same keys as preferences.xml. -->
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory app:title="@string/settings_group_smoothing">
+        <com.metallic.chiaki.settings.ValueListPreference
+            app:key="@string/preferences_deband_key"
+            app:title="@string/preferences_deband_title"
+            app:summary="@string/settings_deband_summary" />
+        <com.metallic.chiaki.settings.ValueListPreference
+            app:key="@string/preferences_sharpen_key"
+            app:title="@string/settings_sharpen_title"
+            app:summary="@string/settings_sharpen_summary" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/settings_group_while_playing">
+        <SwitchPreference
+            app:key="@string/preferences_video_filter_stats_key"
+            app:title="@string/settings_stats_title"
+            app:summary="@string/settings_stats_summary" />
+    </PreferenceCategory>
+</PreferenceScreen>

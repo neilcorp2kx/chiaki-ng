@@ -3,6 +3,8 @@
 package com.metallic.chiaki.regist
 
 import com.metallic.chiaki.common.ext.padForSystemBars
+import com.metallic.chiaki.looks.LookScreen
+import com.metallic.chiaki.looks.applyAppStyle
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
@@ -37,6 +39,7 @@ class RegistExecuteActivity: AppCompatActivity()
 
 	override fun onCreate(savedInstanceState: Bundle?)
 	{
+		applyAppStyle(LookScreen.FORM)
 		super.onCreate(savedInstanceState)
 		binding = ActivityRegistExecuteBinding.inflate(layoutInflater)
 		setContentView(binding.root)

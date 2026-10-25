@@ -22,6 +22,9 @@ import com.metallic.chiaki.common.ext.viewModelFactory
 import com.metallic.chiaki.common.getDatabase
 import com.metallic.chiaki.common.importSettingsFromUri
 import com.metallic.chiaki.looks.AppStyle
+import android.view.View
+import androidx.annotation.XmlRes
+import com.metallic.chiaki.manualconsole.EditManualConsoleActivity
 
 class DataStore(val preferences: Preferences): PreferenceDataStore()
 {
@@ -36,6 +39,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.keyboardEnabledKey -> preferences.keyboardEnabled
 		preferences.controllerMotionKey -> preferences.controllerMotion
 		preferences.hideTouchWithControllerKey -> preferences.hideTouchWithController
+		preferences.discoveryEnabledKey -> preferences.discoveryEnabled
 		else -> defValue
 	}
 
@@ -52,6 +56,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 			preferences.keyboardEnabledKey -> preferences.keyboardEnabled = value
 			preferences.controllerMotionKey -> preferences.controllerMotion = value
 			preferences.hideTouchWithControllerKey -> preferences.hideTouchWithController = value
+			preferences.discoveryEnabledKey -> preferences.discoveryEnabled = value
 		}
 	}
 
@@ -128,6 +133,39 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 	{
 		super.onResume()
 		updatePsnAccountSummary()
+		updatePsnConsoles()
+	}
+
+	/** PSN page of the Status light and Console home looks: the account's consoles and whether PSN can wake them */
+	private fun updatePsnConsoles()
+	{
+		val context = context ?: return
+		val category = preferenceScreen?.findPreference<PreferenceCategory>("psn_consoles") ?: return
+		val account = PsnAccount.get(context)
+		category.isVisible = account.isSignedIn
+		if(!account.isSignedIn)
+			return
+		fun info(title: String, summary: String? = null) = Preference(context).also {
+			it.title = title
+			it.summary = summary
+			it.isSelectable = false
+		}
+		category.removeAll()
+		category.addPreference(info(getString(R.string.settings_psn_consoles_loading)))
+		lifecycleScope.launch {
+			val rows = try
+			{
+				account.listConsoles().map {
+					info(it.name, getString(if(it.networkWakeupEnabled) R.string.settings_psn_console_wake else R.string.settings_psn_console_no_wake))
+				}.ifEmpty { listOf(info(getString(R.string.settings_psn_consoles_none))) }
+			}
+			catch(e: Exception)
+			{
+				listOf(info(getString(R.string.settings_psn_consoles_error, e.message ?: e.toString())))
+			}
+			category.removeAll()
+			rows.forEach { category.addPreference(it) }
+		}
 	}
 
 	private fun updatePsnAccountSummary()
@@ -155,6 +193,7 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 			.setPositiveButton(R.string.action_psn_sign_out) { _, _ ->
 				account.signOut()
 				updatePsnAccountSummary()
+				updatePsnConsoles()
 			}
 			.setNegativeButton(android.R.string.cancel) { _, _ -> }
 			.show()
@@ -163,6 +202,40 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 	companion object
 	{
 		private const val PICK_SETTINGS_JSON_REQUEST = 1
+		private const val ARG_XML = "xml"
+		private const val ARG_TITLE = "title"
+
+		/** One page of the Status light and Console home settings (SettingsCategory) */
+		fun newInstance(@XmlRes xml: Int, title: String) = SettingsFragment().apply {
+			arguments = Bundle().apply {
+				putInt(ARG_XML, xml)
+				putString(ARG_TITLE, title)
+			}
+		}
+	}
+
+	private val looks get() = context?.let { !Preferences(it).appStyle.isClassic } ?: false
+
+	override fun onViewCreated(view: View, savedInstanceState: Bundle?)
+	{
+		super.onViewCreated(view, savedInstanceState)
+		if(looks)
+		{
+			setDivider(null)
+			listView.clipToPadding = false
+			listView.setPadding(0, 0, 0, (24 * resources.displayMetrics.density).toInt())
+		}
+	}
+
+	override fun onDisplayPreferenceDialog(preference: Preference)
+	{
+		// The other looks choose in their own panel, with a preview where it helps
+		if(looks && preference is ListPreference)
+		{
+			LookChoiceSheet(requireContext(), preference).show()
+			return
+		}
+		super.onDisplayPreferenceDialog(preference)
 	}
 
 	override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?)
@@ -174,7 +247,7 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 
 		val preferences = viewModel.preferences
 		preferenceManager.preferenceDataStore = DataStore(preferences)
-		setPreferencesFromResource(R.xml.preferences, rootKey)
+		setPreferencesFromResource(arguments?.getInt(ARG_XML)?.takeIf { it != 0 } ?: R.xml.preferences, rootKey)
 
 		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_app_style_key))?.let {
 			it.entryValues = AppStyle.values().map { style -> style.value }.toTypedArray()
@@ -269,12 +342,16 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 		})
 
 		preferenceScreen.findPreference<Preference>("psn_account")?.setOnPreferenceClickListener { psnAccountClicked(); true }
+		preferenceScreen.findPreference<Preference>("add_manual_console")?.setOnPreferenceClickListener {
+			startActivity(Intent(context, EditManualConsoleActivity::class.java))
+			true
+		}
 
 		preferenceScreen.findPreference<Preference>(getString(R.string.preferences_export_settings_key))?.setOnPreferenceClickListener { exportSettings(); true }
 		preferenceScreen.findPreference<Preference>(getString(R.string.preferences_import_settings_key))?.setOnPreferenceClickListener { importSettings(); true }
 	}
 
-	override fun getTitle(resources: Resources): String = resources.getString(R.string.title_settings)
+	override fun getTitle(resources: Resources): String = arguments?.getString(ARG_TITLE) ?: resources.getString(R.string.title_settings)
 
 	private fun exportSettings()
 	{

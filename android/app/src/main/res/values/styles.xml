@@ -134,6 +134,13 @@
         <item name="materialAlertDialogTheme">@style/StatusLightTheme.AlertDialog</item>
         <item name="alertDialogTheme">@style/StatusLightTheme.AlertDialog.NonMaterial</item>
         <item name="android:windowActivityTransitions">true</item>
+        <item name="preferenceTheme">@style/LookPreferenceTheme</item>
+        <item name="lookTitleFont">@font/archivo_wide</item>
+        <item name="lookSettingsBackground">@color/sl_graphite</item>
+        <item name="lookRowBackground">@drawable/sl_row_background</item>
+        <item name="lookRailItemBackground">@drawable/sl_rail_item_background</item>
+        <item name="lookSheetBackground">@drawable/sl_sheet_background</item>
+        <item name="lookDividerColor">@color/sl_plate</item>
     </style>
 
     <style name="StatusLightTheme.AlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
@@ -189,6 +196,13 @@
         <item name="materialAlertDialogTheme">@style/ConsoleHomeTheme.AlertDialog</item>
         <item name="alertDialogTheme">@style/ConsoleHomeTheme.AlertDialog.NonMaterial</item>
         <item name="android:windowActivityTransitions">true</item>
+        <item name="preferenceTheme">@style/LookPreferenceTheme</item>
+        <item name="lookTitleFont">@font/mukta_extralight</item>
+        <item name="lookSettingsBackground">@drawable/ch_settings_background</item>
+        <item name="lookRowBackground">@drawable/ch_row_background</item>
+        <item name="lookRailItemBackground">@drawable/ch_rail_item_background</item>
+        <item name="lookSheetBackground">@drawable/ch_sheet_background</item>
+        <item name="lookDividerColor">#2EA9B8D6</item>
     </style>
 
     <style name="ConsoleHomeTheme.AlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
@@ -298,5 +312,124 @@
         <item name="android:focusable">true</item>
         <item name="android:clickable">true</item>
         <item name="tint">@color/ch_pill_glass_content</item>
+    </style>
+
+    <!-- Settings rows of the Status light and Console home looks (preferenceTheme) -->
+    <style name="LookPreferenceTheme" parent="PreferenceThemeOverlay">
+        <item name="preferenceStyle">@style/LookPreference</item>
+        <item name="preferenceCategoryStyle">@style/LookPreference.Category</item>
+        <item name="switchPreferenceStyle">@style/LookPreference.Switch</item>
+        <item name="switchPreferenceCompatStyle">@style/LookPreference.Switch</item>
+        <item name="dialogPreferenceStyle">@style/LookPreference.Dialog</item>
+        <item name="editTextPreferenceStyle">@style/LookPreference.Dialog</item>
+    </style>
+    <style name="LookPreference" parent="Preference.Material">
+        <item name="android:layout">@layout/look_pref_row</item>
+        <item name="iconSpaceReserved">false</item>
+        <item name="allowDividerAbove">false</item>
+        <item name="allowDividerBelow">false</item>
+    </style>
+    <style name="LookPreference.Category" parent="Preference.Category.Material">
+        <item name="android:layout">@layout/look_pref_category</item>
+        <item name="iconSpaceReserved">false</item>
+        <item name="allowDividerAbove">false</item>
+        <item name="allowDividerBelow">false</item>
+    </style>
+    <style name="LookPreference.Switch" parent="Preference.SwitchPreference.Material">
+        <item name="android:layout">@layout/look_pref_row</item>
+        <item name="android:widgetLayout">@layout/look_pref_lamp</item>
+        <item name="iconSpaceReserved">false</item>
+        <item name="allowDividerAbove">false</item>
+        <item name="allowDividerBelow">false</item>
+    </style>
+    <style name="LookPreference.Dialog" parent="Preference.DialogPreference.Material">
+        <item name="android:layout">@layout/look_pref_row</item>
+        <item name="iconSpaceReserved">false</item>
+        <item name="allowDividerAbove">false</item>
+        <item name="allowDividerBelow">false</item>
+    </style>
+
+    <!-- Choice panel (LookChoiceSheet) -->
+    <style name="LookSheetDialog" parent="Theme.MaterialComponents.Dialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:backgroundDimAmount">0.55</item>
+        <item name="android:windowIsFloating">true</item>
+    </style>
+    <style name="LookSheetAnimation" />
+    <style name="LookSheetAnimation.End">
+        <item name="android:windowEnterAnimation">@anim/look_sheet_in_end</item>
+        <item name="android:windowExitAnimation">@anim/look_sheet_out_end</item>
+    </style>
+    <style name="LookSheetAnimation.Bottom">
+        <item name="android:windowEnterAnimation">@anim/look_sheet_in_bottom</item>
+        <item name="android:windowExitAnimation">@anim/look_sheet_out_bottom</item>
+    </style>
+
+    <!-- Register and add-by-address screens in the two looks -->
+    <style name="MageTheme.StatusLight">
+        <item name="colorPrimary">@color/sl_graphite</item>
+        <item name="colorPrimaryDark">@color/sl_graphite</item>
+        <item name="colorAccent">@color/sl_frost</item>
+        <item name="colorOnPrimary">@color/sl_frost</item>
+        <item name="colorSecondary">@color/sl_frost</item>
+        <item name="colorOnSecondary">@color/sl_graphite</item>
+        <item name="colorPrimarySurface">@color/sl_graphite</item>
+        <item name="colorSurface">@color/sl_plate</item>
+        <item name="colorOnSurface">@color/sl_frost</item>
+        <item name="android:windowBackground">@color/sl_graphite</item>
+        <item name="colorControlNormal">@color/sl_haze</item>
+        <item name="colorButtonNormal">@color/sl_frost</item>
+        <item name="android:textColorPrimary">@color/sl_frost</item>
+        <item name="android:textColorSecondary">@color/sl_haze</item>
+        <item name="android:fontFamily">@font/archivo</item>
+        <item name="textAppearanceHeadline1">@style/MageTheme.StatusLight.Headline</item>
+        <item name="textInputStyle">@style/MageTheme.StatusLight.TextInput</item>
+        <item name="materialAlertDialogTheme">@style/StatusLightTheme.AlertDialog</item>
+        <item name="lookTitleFont">@font/archivo_wide</item>
+    </style>
+    <style name="MageTheme.StatusLight.Headline" parent="TextAppearance.MaterialComponents.Headline1">
+        <item name="android:fontFamily">@font/archivo_wide</item>
+        <item name="fontFamily">@font/archivo_wide</item>
+    </style>
+    <style name="MageTheme.StatusLight.TextInput" parent="MageTheme.TextInputStyle">
+        <item name="boxBackgroundColor">@color/sl_plate</item>
+        <item name="boxCornerRadiusTopStart">10dp</item>
+        <item name="boxCornerRadiusTopEnd">10dp</item>
+    </style>
+
+    <style name="MageTheme.ConsoleHome">
+        <item name="colorPrimary">@color/ch_midnight</item>
+        <item name="colorPrimaryDark">@color/ch_midnight</item>
+        <item name="colorAccent">@color/ch_glow</item>
+        <item name="colorOnPrimary">@color/ch_lumen</item>
+        <item name="colorSecondary">@color/ch_lumen</item>
+        <item name="colorOnSecondary">@color/ch_midnight</item>
+        <item name="colorPrimarySurface">@color/ch_midnight</item>
+        <item name="colorSurface">@color/ch_card</item>
+        <item name="colorOnSurface">@color/ch_lumen</item>
+        <item name="android:windowBackground">@drawable/ch_settings_background</item>
+        <item name="colorControlNormal">@color/ch_mist</item>
+        <item name="colorButtonNormal">@color/ch_lumen</item>
+        <item name="android:textColorPrimary">@color/ch_lumen</item>
+        <item name="android:textColorSecondary">@color/ch_mist</item>
+        <item name="android:fontFamily">@font/mukta</item>
+        <item name="textAppearanceHeadline1">@style/MageTheme.ConsoleHome.Headline</item>
+        <item name="textInputStyle">@style/MageTheme.ConsoleHome.TextInput</item>
+        <item name="materialAlertDialogTheme">@style/ConsoleHomeTheme.AlertDialog</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="lookTitleFont">@font/mukta_extralight</item>
+    </style>
+    <style name="MageTheme.ConsoleHome.Headline" parent="TextAppearance.MaterialComponents.Headline1">
+        <item name="android:fontFamily">@font/mukta_extralight</item>
+        <item name="fontFamily">@font/mukta_extralight</item>
+    </style>
+    <style name="MageTheme.ConsoleHome.TextInput" parent="MageTheme.TextInputStyle">
+        <item name="boxBackgroundColor">@color/ch_card</item>
+        <item name="hintTextColor">@color/ch_lumen</item>
+        <item name="boxCornerRadiusTopStart">14dp</item>
+        <item name="boxCornerRadiusTopEnd">14dp</item>
     </style>
 </resources>

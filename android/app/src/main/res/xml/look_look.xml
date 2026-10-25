@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A settings page of the Status light and Console home looks (SettingsCategory). Same keys as preferences.xml. -->
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+    <com.metallic.chiaki.settings.ValueListPreference
+        app:key="@string/preferences_app_style_key"
+        app:title="@string/preferences_app_style_title"
+        app:summary="@string/settings_look_summary" />
+</PreferenceScreen>

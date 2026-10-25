@@ -132,10 +132,10 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 android:layout_marginTop="8dp"
-                android:textColor="@color/accent"
-                app:strokeColor="@color/accent"
+                android:textColor="?attr/colorSecondary"
+                app:strokeColor="?attr/colorSecondary"
                 app:icon="@drawable/ic_psn_id"
-                app:iconTint="@color/accent"
+                app:iconTint="?attr/colorSecondary"
                 android:text="@string/action_psn_login"/>
 
             <androidx.constraintlayout.widget.Group
