@@ -78,6 +78,9 @@ class StreamSession(
 	/** Microphone on or off, false while not connected */
 	fun setMicrophone(enabled: Boolean) = session?.setMicrophone(enabled) ?: false
 
+	/** Adds a line to the session log, if a session is running */
+	fun logInfo(message: String) { session?.logInfo(message) }
+
 	/** Puts the console into rest mode, for leaving the stream */
 	fun gotoBed() = session?.gotoBed()
 

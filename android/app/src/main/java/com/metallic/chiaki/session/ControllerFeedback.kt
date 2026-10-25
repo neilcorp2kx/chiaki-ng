@@ -29,6 +29,21 @@ class ControllerFeedback(private val context: Context, private val onControllerC
 	{
 		private const val TAG = "ControllerFeedback"
 		private const val RUMBLE_MS = 1000L
+
+		/**
+		 * A game controller the player can use. Phones can expose built-in parts, such as a
+		 * fingerprint reader or cover sensor, as "gamepad" input devices; those would hide the
+		 * touch controls. A real controller is external (USB, Bluetooth) or has analog sticks
+		 * (also built-in handheld controls).
+		 */
+		fun isGameController(device: InputDevice): Boolean
+		{
+			if(device.isVirtual || (device.sources and InputDevice.SOURCE_GAMEPAD) != InputDevice.SOURCE_GAMEPAD)
+				return false
+			val sticks = (device.sources and InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
+			val external = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && device.isExternal
+			return sticks || external
+		}
 	}
 
 	private val inputManager = context.getSystemService(Context.INPUT_SERVICE) as InputManager
@@ -47,6 +62,18 @@ class ControllerFeedback(private val context: Context, private val onControllerC
 		selectDevice()
 	}
 
+	/** Input devices that look like game controllers, and whether they count as one. For the session log. */
+	fun describeInputDevices(): List<String> =
+		InputDevice.getDeviceIds().toList().mapNotNull { InputDevice.getDevice(it) }
+			.filter { !it.isVirtual && (it.supportsSource(InputDevice.SOURCE_GAMEPAD) || it.supportsSource(InputDevice.SOURCE_JOYSTICK)) }
+			.map { d ->
+				val gamepad = (d.sources and InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
+				val sticks = (d.sources and InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
+				val external = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && d.isExternal
+				"Input device \"${d.name}\": gamepad $gamepad, sticks $sticks, external $external, " +
+					if(isGameController(d)) "used as the controller" else "ignored"
+			}
+
 	/** The controller, if one is connected (physical gamepad or joystick) */
 	val controller: InputDevice? get() = device
 
@@ -54,7 +81,7 @@ class ControllerFeedback(private val context: Context, private val onControllerC
 	{
 		val found = InputDevice.getDeviceIds().toList()
 			.mapNotNull { InputDevice.getDevice(it) }
-			.firstOrNull { !it.isVirtual && (it.sources and InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD }
+			.firstOrNull { isGameController(it) }
 		if(found?.id != device?.id)
 		{
 			lightsSession?.close()

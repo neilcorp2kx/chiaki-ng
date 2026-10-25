@@ -237,11 +237,15 @@ class StreamActivity : AppCompatActivity()
 			cards.microphoneSwitch, cards.displayModeToggle, cards.cardsLayout.children.toList())
 	}
 
+	/** The connecting screen is up; it covers the touch controls */
+	private var connectScreenShown = true
+
 	private fun showConnectScreen(show: Boolean)
 	{
 		val container = binding.connectContainer
-		if(connectScreen == null || show == (container.isVisible && container.alpha == 1f))
+		if(connectScreen == null || show == connectScreenShown)
 			return
+		connectScreenShown = show
 		container.animate().cancel()
 		if(show)
 		{
@@ -249,7 +253,11 @@ class StreamActivity : AppCompatActivity()
 			container.isVisible = true
 		}
 		else
-			container.animate().alpha(0f).setDuration(300).withEndAction { container.isGone = true }.start()
+		{
+			container.animate().alpha(0f).setDuration(300).start()
+			// Gone right after the fade in any case, so it never stays over the touch controls.
+			container.postDelayed({ if(!connectScreenShown) container.isGone = true }, 320)
+		}
 	}
 
 	private var filterRenderer: VideoFilterRenderer? = null
@@ -416,6 +424,7 @@ class StreamActivity : AppCompatActivity()
 		{
 			session.setStatus(getString(R.string.status_connecting_lan))
 			session.resume()
+			logInputSetup()
 			return
 		}
 		session.setStatus(getString(R.string.status_connecting_psn))
@@ -429,8 +438,26 @@ class StreamActivity : AppCompatActivity()
 				Log.w("StreamActivity", "Could not refresh the PSN token, connecting with the old one", e)
 			}
 			if(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
+			{
 				session.resume()
+				logInputSetup()
+			}
 		}
+	}
+
+	/** Which input devices count as a controller, and so whether the touch controls show */
+	private fun logInputSetup()
+	{
+		val session = viewModel.session
+		val devices = controllerFeedback?.describeInputDevices().orEmpty()
+		if(devices.isEmpty())
+			session.logInfo("No controller-like input devices")
+		devices.forEach { session.logInfo(it) }
+		val preferences = Preferences(this)
+		session.logInfo("Touch controls: setting ${if(viewModel.onScreenControlsEnabled.value == true) "on" else "off"}, " +
+			"hide with a controller ${if(preferences.hideTouchWithController) "on" else "off"}, " +
+			"touchpad only ${if(viewModel.touchpadOnlyEnabled.value == true) "on" else "off"}, " +
+			"shown ${viewModel.onScreenControlsVisible.value == true}")
 	}
 
 	override fun onAttachFragment(fragment: Fragment)

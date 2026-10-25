@@ -830,6 +830,18 @@ JNIEXPORT jboolean JNICALL JNI_FCN(sessionSetMicrophone)(JNIEnv *env, jobject ob
 	return true;
 }
 
+/** Lets the app add its own lines (for example the input devices) to the session log */
+JNIEXPORT void JNICALL JNI_FCN(sessionLogInfo)(JNIEnv *env, jobject obj, jlong ptr, jstring message_string)
+{
+	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
+	const char *message = E->GetStringUTFChars(env, message_string, NULL);
+	if(message)
+	{
+		CHIAKI_LOGI(session->log, "%s", message);
+		E->ReleaseStringUTFChars(env, message_string, message);
+	}
+}
+
 JNIEXPORT jint JNICALL JNI_FCN(sessionGotoBed)(JNIEnv *env, jobject obj, jlong ptr)
 {
 	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;

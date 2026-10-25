@@ -43,6 +43,7 @@ import com.metallic.chiaki.looks.AppStyle
 import com.metallic.chiaki.looks.HomeActions
 import com.metallic.chiaki.looks.HomeScreen
 import com.metallic.chiaki.looks.applyAppStyle
+import com.metallic.chiaki.session.ControllerFeedback
 
 class MainActivity : AppCompatActivity()
 {
@@ -107,7 +108,7 @@ class MainActivity : AppCompatActivity()
 	private fun updateControllerConnected()
 	{
 		val connected = InputDevice.getDeviceIds().any { id ->
-			InputDevice.getDevice(id)?.let { !it.isVirtual && it.supportsSource(InputDevice.SOURCE_GAMEPAD) } ?: false
+			InputDevice.getDevice(id)?.let { ControllerFeedback.isGameController(it) } ?: false
 		}
 		home?.setControllerConnected(connected)
 	}
