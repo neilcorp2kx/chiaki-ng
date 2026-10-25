@@ -245,6 +245,11 @@ class Preferences(context: Context)
 		get() = sharedPreferences.getBoolean(controllerMotionKey, true)
 		set(value) { sharedPreferences.edit().putBoolean(controllerMotionKey, value).apply() }
 
+	val pictureInPictureKey get() = resources.getString(R.string.preferences_pip_key)
+	var pictureInPicture
+		get() = sharedPreferences.getBoolean(pictureInPictureKey, true)
+		set(value) { sharedPreferences.edit().putBoolean(pictureInPictureKey, value).apply() }
+
 	val leaveActionKey get() = resources.getString(R.string.preferences_leave_action_key)
 	var leaveAction
 		get() = sharedPreferences.getString(leaveActionKey, leaveActionDefault.value)?.let { value ->

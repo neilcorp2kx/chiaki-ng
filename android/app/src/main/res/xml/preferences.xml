@@ -118,6 +118,12 @@
             app:title="@string/preferences_remote_bitrate_title"
             app:icon="@drawable/ic_bitrate"/>
 
+        <SwitchPreference
+            app:key="@string/preferences_pip_key"
+            app:title="@string/preferences_pip_title"
+            app:summary="@string/preferences_pip_summary"
+            app:defaultValue="true"/>
+
         <ListPreference
             app:key="@string/preferences_leave_action_key"
             app:title="@string/preferences_leave_action_title"

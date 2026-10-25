@@ -42,6 +42,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.controllerMotionKey -> preferences.controllerMotion
 		preferences.hideTouchWithControllerKey -> preferences.hideTouchWithController
 		preferences.discoveryEnabledKey -> preferences.discoveryEnabled
+		preferences.pictureInPictureKey -> preferences.pictureInPicture
 		else -> defValue
 	}
 
@@ -59,6 +60,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 			preferences.controllerMotionKey -> preferences.controllerMotion = value
 			preferences.hideTouchWithControllerKey -> preferences.hideTouchWithController = value
 			preferences.discoveryEnabledKey -> preferences.discoveryEnabled = value
+			preferences.pictureInPictureKey -> preferences.pictureInPicture = value
 		}
 	}
 

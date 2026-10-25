@@ -30,6 +30,11 @@
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/settings_group_leaving">
+        <SwitchPreference
+            app:key="@string/preferences_pip_key"
+            app:title="@string/preferences_pip_title"
+            app:summary="@string/preferences_pip_summary"
+            app:defaultValue="true" />
         <com.metallic.chiaki.settings.ValueListPreference
             app:key="@string/preferences_leave_action_key"
             app:title="@string/settings_leave_title"

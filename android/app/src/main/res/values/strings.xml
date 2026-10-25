@@ -369,4 +369,9 @@
     <string name="alert_message_no_network">No network came back. Connect to Wi-Fi or mobile data, then reconnect.</string>
     <string name="settings_menu_shortcut_title">Stream menu from the controller</string>
     <string name="settings_menu_shortcut_summary">Hold L1, R1, L3 and R3 together, then let go. Move through the menu with the D-pad, A chooses, B closes.</string>
+
+    <!-- Picture-in-picture when leaving the app during a stream -->
+    <string name="preferences_pip_key">stream_picture_in_picture</string>
+    <string name="preferences_pip_title">Picture-in-picture</string>
+    <string name="preferences_pip_summary">Keep playing in a small window when you leave the app. Closing the window ends the stream.</string>
 </resources>

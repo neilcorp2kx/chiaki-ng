@@ -8,6 +8,11 @@ import android.app.AlertDialog
 import android.graphics.Matrix
 import android.opengl.GLSurfaceView
 import android.os.*
+import android.app.PictureInPictureParams
+import android.content.res.Configuration
+import android.graphics.Rect
+import android.util.Rational
+import androidx.annotation.RequiresApi
 import android.view.*
 import android.widget.EditText
 import androidx.appcompat.app.AppCompatActivity
@@ -609,7 +614,8 @@ class StreamActivity : AppCompatActivity()
 	{
 		filterRenderer?.let { binding.filterSurfaceView.onResume() }
 		if(pretendConnected)
-			stateChanged(StreamStateConnected)
+			// After the session's own (idle) state has been delivered on start
+			binding.root.post { stateChanged(StreamStateConnected) }
 		else
 			resumeSession()
 		val showStats = Preferences(this).videoFilterStats
@@ -725,12 +731,90 @@ class StreamActivity : AppCompatActivity()
 				dialogContents = null
 		}
 
+	// Picture-in-picture: keep playing in a small window when the user leaves the app
+
+	private val pipSupported get() =
+		Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+
+	private val pipWanted get() =
+		pipSupported && Preferences(this).pictureInPicture && shownState == StreamStateConnected && controlsEditor == null
+
+	@RequiresApi(Build.VERSION_CODES.O)
+	private fun pipParams(): PictureInPictureParams
+	{
+		val profile = viewModel.session.connectInfo.videoProfile
+		val builder = PictureInPictureParams.Builder()
+			.setAspectRatio(Rational(profile.width, profile.height))
+		val picture = Rect()
+		if(binding.aspectRatioLayout.getGlobalVisibleRect(picture))
+			builder.setSourceRectHint(picture)
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+		{
+			// Android 12+: go into the window by itself with the home gesture, smoothly
+			builder.setAutoEnterEnabled(pipWanted)
+			builder.setSeamlessResizeEnabled(false)
+		}
+		return builder.build()
+	}
+
+	private fun updatePipParams()
+	{
+		if(pipSupported)
+			try { setPictureInPictureParams(pipParams()) } catch(e: Exception) { Log.w("StreamActivity", "PiP params", e) }
+	}
+
+	override fun onUserLeaveHint()
+	{
+		super.onUserLeaveHint()
+		// Before Android 12 there is no automatic entry
+		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.S && pipWanted)
+			try { enterPictureInPictureMode(pipParams()) } catch(e: Exception) { Log.w("StreamActivity", "Could not enter PiP", e) }
+	}
+
+	/** Views hidden in the small window, with what they showed before */
+	private val pipHidden = mutableMapOf<View, Int>()
+
+	override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration)
+	{
+		super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+		if(isInPictureInPictureMode)
+		{
+			if(menuOpen)
+				closeMenu()
+			// Only the picture: no controls, menu, stats or overlay in the small window
+			val views = listOfNotNull(
+				supportFragmentManager.findFragmentById(R.id.controlsFragment)?.view,
+				supportFragmentManager.findFragmentById(R.id.touchpadOnlyFragment)?.view,
+				overlay.root, binding.menuButton, binding.filterStatsTextView, binding.liveEdgeView)
+			for(view in views)
+			{
+				pipHidden[view] = view.visibility
+				view.visibility = View.GONE
+			}
+			return
+		}
+		// Closed (the stream stops with onStop) rather than opened back up
+		if(lifecycle.currentState == Lifecycle.State.CREATED)
+		{
+			finish()
+			return
+		}
+		pipHidden.forEach { (view, visibility) -> view.visibility = visibility }
+		pipHidden.clear()
+		// The controls follow their settings, which may have changed meanwhile (a controller connected)
+		supportFragmentManager.findFragmentById(R.id.controlsFragment)?.view?.isVisible = viewModel.onScreenControlsVisible.value ?: true
+		supportFragmentManager.findFragmentById(R.id.touchpadOnlyFragment)?.view?.isVisible = viewModel.touchpadOnlyEnabled.value ?: false
+		overlay.root.isGone = true
+		hideSystemUI()
+	}
+
 	/** The last state shown, so playing means what the screen shows (also in the debug pretend mode) */
 	private var shownState: StreamState = StreamStateIdle
 
 	private fun stateChanged(state: StreamState)
 	{
 		shownState = state
+		updatePipParams()
 		binding.menuButton.isVisible = state == StreamStateConnected
 		if(state == StreamStateConnected)
 			autoReconnect.onPlaying()
