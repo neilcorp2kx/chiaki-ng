@@ -11,6 +11,9 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import com.metallic.chiaki.R
 import com.metallic.chiaki.databinding.ActivitySettingsBinding
+import androidx.core.content.res.ResourcesCompat
+import com.metallic.chiaki.looks.AppStyle
+import com.metallic.chiaki.looks.applyAppStyle
 
 interface TitleFragment
 {
@@ -23,10 +26,17 @@ class SettingsActivity: AppCompatActivity(), PreferenceFragmentCompat.OnPreferen
 
 	override fun onCreate(savedInstanceState: Bundle?)
 	{
+		val style = applyAppStyle()
 		super.onCreate(savedInstanceState)
 		binding = ActivitySettingsBinding.inflate(layoutInflater)
 		setContentView(binding.root)
 		binding.root.padForSystemBars()
+		when(style)
+		{
+			AppStyle.STATUS_LIGHT -> binding.titleTextView.typeface = ResourcesCompat.getFont(this, R.font.archivo_wide)
+			AppStyle.CONSOLE_HOME -> binding.titleTextView.typeface = ResourcesCompat.getFont(this, R.font.mukta_light)
+			AppStyle.CLASSIC -> {}
+		}
 		title = ""
 		setSupportActionBar(binding.toolbar)
 

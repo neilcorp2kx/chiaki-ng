@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A console tile of the Status light look. The light strip is the console's state. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    android:background="@drawable/sl_tile_background"
+    android:clickable="true"
+    android:focusable="true"
+    android:minHeight="188dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingTop="14dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="20dp">
+
+        <com.metallic.chiaki.looks.LightStripView
+            android:id="@+id/strip"
+            android:layout_width="match_parent"
+            android:layout_height="20dp"
+            android:layout_marginStart="-6dp"
+            android:layout_marginEnd="-6dp" />
+
+        <TextView
+            android:id="@+id/nameTextView"
+            style="@style/StatusLight.Display"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textSize="22sp"
+            tools:text="PS5-962" />
+
+        <TextView
+            android:id="@+id/stateTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:fontFamily="@font/archivo_semibold"
+            android:textColor="@color/sl_frost"
+            android:textSize="15sp"
+            tools:text="Ready to play" />
+
+        <TextView
+            android:id="@+id/routeTextView"
+            style="@style/StatusLight.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:layout_marginEnd="40dp"
+            tools:text="Away from home, connects over PSN" />
+
+        <TextView
+            android:id="@+id/appTextView"
+            style="@style/StatusLight.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="40dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:visibility="gone"
+            tools:text="Playing Astro Bot" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/optionsButton"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="8dp"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:focusable="false"
+        android:padding="10dp"
+        android:src="@drawable/ic_look_more"
+        android:tint="@color/sl_haze" />
+</FrameLayout>

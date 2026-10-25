@@ -15,4 +15,25 @@
     <color name="control_pressed">#88ffffff</color>
 
     <color name="item_delete_background">#B71C1C</color>
+
+    <!-- "Status light" look: the console's power light. White = ready, amber = rest mode -->
+    <color name="sl_graphite">#1D2229</color>
+    <color name="sl_plate">#29303A</color>
+    <color name="sl_plate_high">#343C48</color>
+    <color name="sl_frost">#EEF1F4</color>
+    <color name="sl_haze">#9AA5B1</color>
+    <color name="sl_standby">#F5A524</color>
+    <color name="sl_fault">#FF7A6B</color>
+    <color name="sl_band">#EB1D2229</color>
+
+    <!-- "Console home" look: home-screen row, ambient light -->
+    <color name="ch_midnight">#0B1A3A</color>
+    <color name="ch_deep">#10265C</color>
+    <color name="ch_glow">#4C8DFF</color>
+    <color name="ch_lumen">#F5F8FF</color>
+    <color name="ch_mist">#A9B8D6</color>
+    <color name="ch_standby">#F5A524</color>
+    <color name="ch_card">#1A2747</color>
+    <color name="ch_card_overlay">#E01A2747</color>
+    <color name="ch_glass">#26F5F8FF</color>
 </resources>

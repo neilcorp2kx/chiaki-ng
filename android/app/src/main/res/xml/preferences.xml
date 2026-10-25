@@ -5,6 +5,12 @@
     <PreferenceCategory
         app:key="category_general"
         app:title="@string/preferences_category_title_general">
+        <ListPreference
+            app:key="@string/preferences_app_style_key"
+            app:title="@string/preferences_app_style_title"
+            app:summary="%s"
+            app:icon="@drawable/ic_display_normal"/>
+
         <Preference
             app:key="registered_hosts"
             tools:summary="@string/preferences_registered_hosts_summary"

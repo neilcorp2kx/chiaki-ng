@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Consoles screen of the Status light look -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/homeRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/sl_graphite"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="24dp"
+        android:paddingTop="20dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="12dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/titleTextView"
+                style="@style/StatusLight.Display"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/home_title"
+                android:textSize="28sp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:accessibilityHeading="true" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.metallic.chiaki.looks.LightStripView
+                    android:id="@+id/accountLight"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginStart="-6dp" />
+
+                <TextView
+                    android:id="@+id/accountTextView"
+                    style="@style/StatusLight.Body"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="2dp"
+                    tools:text="@string/home_psn_signed_in" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/findButton"
+            style="@style/StatusLight.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:drawableStart="@drawable/ic_look_find"
+            android:text="@string/home_find_on_network" />
+
+        <TextView
+            android:id="@+id/addButton"
+            style="@style/StatusLight.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:drawableStart="@drawable/ic_look_add"
+            android:text="@string/home_add_console" />
+
+        <ImageView
+            android:id="@+id/settingsButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/sl_button"
+            android:clickable="true"
+            android:contentDescription="@string/home_settings"
+            android:focusable="true"
+            android:padding="12dp"
+            android:src="@drawable/ic_look_settings"
+            android:tint="@color/sl_frost" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/consolesRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingStart="16dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="16dp" />
+
+        <LinearLayout
+            android:id="@+id/emptyLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:orientation="vertical"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:visibility="gone">
+
+            <com.metallic.chiaki.looks.LightStripView
+                android:id="@+id/emptyLight"
+                android:layout_width="160dp"
+                android:layout_height="20dp"
+                android:layout_marginStart="-6dp" />
+
+            <TextView
+                style="@style/StatusLight.Display"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/home_empty_title"
+                android:textSize="22sp" />
+
+            <TextView
+                style="@style/StatusLight.Body"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:maxWidth="520dp"
+                android:text="@string/home_empty_body"
+                android:textSize="16sp" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/hintTextView"
+        style="@style/StatusLight.Body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="14dp"
+        android:text="@string/home_hint_status_light"
+        android:visibility="gone" />
+</LinearLayout>

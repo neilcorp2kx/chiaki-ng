@@ -110,4 +110,193 @@
         <item name="materialAlertDialogTheme">@style/AppTheme.AlertDialog</item>
         <item name="android:windowBackground">@color/stream_background</item>
     </style>
+
+    <!-- "Status light" look (AppStyle.STATUS_LIGHT) -->
+    <style name="StatusLightTheme" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="colorPrimary">@color/sl_plate</item>
+        <item name="colorPrimaryDark">@color/sl_graphite</item>
+        <item name="colorAccent">@color/sl_frost</item>
+        <item name="colorOnPrimary">@color/sl_frost</item>
+        <item name="colorSecondary">@color/sl_frost</item>
+        <item name="colorOnSecondary">@color/sl_graphite</item>
+        <item name="colorSurface">@color/sl_plate</item>
+        <item name="colorOnSurface">@color/sl_frost</item>
+        <item name="colorPrimarySurface">@color/sl_graphite</item>
+        <item name="colorControlNormal">@color/sl_haze</item>
+        <item name="colorControlActivated">@color/sl_frost</item>
+        <item name="android:colorBackground">@color/sl_graphite</item>
+        <item name="android:windowBackground">@color/sl_graphite</item>
+        <item name="android:textColorPrimary">@color/sl_frost</item>
+        <item name="android:textColorSecondary">@color/sl_haze</item>
+        <item name="android:statusBarColor">@color/sl_graphite</item>
+        <item name="android:navigationBarColor">@color/sl_graphite</item>
+        <item name="android:fontFamily">@font/archivo</item>
+        <item name="materialAlertDialogTheme">@style/StatusLightTheme.AlertDialog</item>
+        <item name="alertDialogTheme">@style/StatusLightTheme.AlertDialog.NonMaterial</item>
+        <item name="android:windowActivityTransitions">true</item>
+    </style>
+
+    <style name="StatusLightTheme.AlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="colorSurface">@color/sl_plate</item>
+        <item name="colorOnSurface">@color/sl_frost</item>
+        <item name="colorPrimary">@color/sl_frost</item>
+        <item name="colorAccent">@color/sl_frost</item>
+        <item name="android:textColorPrimary">@color/sl_frost</item>
+        <item name="android:textColorSecondary">@color/sl_haze</item>
+        <item name="android:fontFamily">@font/archivo</item>
+    </style>
+
+    <style name="StatusLightTheme.AlertDialog.NonMaterial" parent="Theme.AppCompat.Dialog.Alert">
+        <item name="android:colorBackground">@color/sl_plate</item>
+        <item name="colorAccent">@color/sl_frost</item>
+        <item name="colorControlActivated">@color/sl_frost</item>
+        <item name="android:textColorPrimary">@color/sl_frost</item>
+        <item name="android:textColorSecondary">@color/sl_haze</item>
+        <item name="android:fontFamily">@font/archivo</item>
+    </style>
+
+    <style name="StreamTheme.StatusLight">
+        <item name="colorAccent">@color/sl_frost</item>
+        <item name="colorSecondary">@color/sl_frost</item>
+        <item name="colorControlActivated">@color/sl_frost</item>
+        <item name="android:fontFamily">@font/archivo</item>
+        <item name="materialAlertDialogTheme">@style/StatusLightTheme.AlertDialog</item>
+        <item name="streamBandBackground">@drawable/sl_band</item>
+        <item name="streamCardBackground">@drawable/sl_stream_card</item>
+        <item name="streamTextColor">@color/sl_frost</item>
+    </style>
+
+    <!-- "Console home" look (AppStyle.CONSOLE_HOME) -->
+    <style name="ConsoleHomeTheme" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="colorPrimary">@color/ch_deep</item>
+        <item name="colorPrimaryDark">@color/ch_midnight</item>
+        <item name="colorAccent">@color/ch_glow</item>
+        <item name="colorOnPrimary">@color/ch_lumen</item>
+        <item name="colorSecondary">@color/ch_glow</item>
+        <item name="colorOnSecondary">@color/ch_lumen</item>
+        <item name="colorSurface">@color/ch_card</item>
+        <item name="colorOnSurface">@color/ch_lumen</item>
+        <item name="colorPrimarySurface">@color/ch_midnight</item>
+        <item name="colorControlNormal">@color/ch_mist</item>
+        <item name="colorControlActivated">@color/ch_glow</item>
+        <item name="android:colorBackground">@color/ch_midnight</item>
+        <item name="android:windowBackground">@color/ch_midnight</item>
+        <item name="android:textColorPrimary">@color/ch_lumen</item>
+        <item name="android:textColorSecondary">@color/ch_mist</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:fontFamily">@font/mukta</item>
+        <item name="materialAlertDialogTheme">@style/ConsoleHomeTheme.AlertDialog</item>
+        <item name="alertDialogTheme">@style/ConsoleHomeTheme.AlertDialog.NonMaterial</item>
+        <item name="android:windowActivityTransitions">true</item>
+    </style>
+
+    <style name="ConsoleHomeTheme.AlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="colorSurface">@color/ch_card</item>
+        <item name="colorOnSurface">@color/ch_lumen</item>
+        <item name="colorPrimary">@color/ch_lumen</item>
+        <item name="colorAccent">@color/ch_glow</item>
+        <item name="android:textColorPrimary">@color/ch_lumen</item>
+        <item name="android:textColorSecondary">@color/ch_mist</item>
+        <item name="android:fontFamily">@font/mukta</item>
+        <item name="shapeAppearanceMediumComponent">@style/ConsoleHomeTheme.DialogShape</item>
+    </style>
+
+    <style name="ConsoleHomeTheme.DialogShape" parent="ShapeAppearance.MaterialComponents.MediumComponent">
+        <item name="cornerSize">20dp</item>
+    </style>
+
+    <style name="ConsoleHomeTheme.AlertDialog.NonMaterial" parent="Theme.AppCompat.Dialog.Alert">
+        <item name="android:colorBackground">@color/ch_card</item>
+        <item name="colorAccent">@color/ch_glow</item>
+        <item name="colorControlActivated">@color/ch_glow</item>
+        <item name="android:textColorPrimary">@color/ch_lumen</item>
+        <item name="android:textColorSecondary">@color/ch_mist</item>
+        <item name="android:fontFamily">@font/mukta</item>
+    </style>
+
+    <style name="StreamTheme.ConsoleHome">
+        <item name="colorAccent">@color/ch_glow</item>
+        <item name="colorSecondary">@color/ch_glow</item>
+        <item name="colorControlActivated">@color/ch_glow</item>
+        <item name="android:fontFamily">@font/mukta</item>
+        <item name="materialAlertDialogTheme">@style/ConsoleHomeTheme.AlertDialog</item>
+        <item name="streamBandBackground">@drawable/ch_band</item>
+        <item name="streamCardBackground">@drawable/ch_stream_card</item>
+        <item name="streamTextColor">@color/ch_lumen</item>
+    </style>
+
+    <!-- Text styles of the two looks -->
+    <style name="StatusLight" />
+    <style name="StatusLight.Display">
+        <item name="android:fontFamily">@font/archivo_wide</item>
+        <item name="android:textColor">@color/sl_frost</item>
+    </style>
+    <style name="StatusLight.Body">
+        <item name="android:fontFamily">@font/archivo</item>
+        <item name="android:textColor">@color/sl_haze</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFeatureSettings">tnum</item>
+    </style>
+    <style name="StatusLight.Button">
+        <item name="android:fontFamily">@font/archivo_semibold</item>
+        <item name="android:textColor">@color/sl_frost</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:background">@drawable/sl_button</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:focusable">true</item>
+        <item name="android:clickable">true</item>
+        <item name="android:drawablePadding">8dp</item>
+        <item name="android:drawableTint">@color/sl_frost</item>
+    </style>
+
+    <style name="StreamCard">
+        <item name="android:background">?attr/streamCardBackground</item>
+        <item name="android:textColor">?attr/streamTextColor</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:minHeight">52dp</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:layout_marginStart">8dp</item>
+        <item name="android:gravity">center_vertical</item>
+    </style>
+
+    <style name="ConsoleHome" />
+    <style name="ConsoleHome.Name">
+        <item name="android:fontFamily">@font/mukta_extralight</item>
+        <item name="android:textColor">@color/ch_lumen</item>
+    </style>
+    <style name="ConsoleHome.Body">
+        <item name="android:fontFamily">@font/mukta</item>
+        <item name="android:textColor">@color/ch_mist</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+    <style name="ConsoleHome.Pill">
+        <item name="android:fontFamily">@font/mukta_semibold</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:paddingStart">26dp</item>
+        <item name="android:paddingEnd">26dp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:focusable">true</item>
+        <item name="android:clickable">true</item>
+    </style>
+    <style name="ConsoleHome.Pill.Primary">
+        <item name="android:background">@drawable/ch_pill_primary</item>
+        <item name="android:textColor">@color/ch_midnight</item>
+    </style>
+    <style name="ConsoleHome.Pill.Glass">
+        <item name="android:background">@drawable/ch_pill_glass</item>
+        <item name="android:textColor">@color/ch_pill_glass_content</item>
+    </style>
+    <style name="ConsoleHome.IconButton">
+        <item name="android:background">@drawable/ch_pill_glass</item>
+        <item name="android:padding">12dp</item>
+        <item name="android:focusable">true</item>
+        <item name="android:clickable">true</item>
+        <item name="tint">@color/ch_pill_glass_content</item>
+    </style>
 </resources>

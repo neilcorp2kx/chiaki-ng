@@ -23,6 +23,13 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:visibility="gone"/>
+        <!-- Status light and Console home looks: a light along the picture's top edge -->
+        <com.metallic.chiaki.looks.LiveEdgeView
+            android:id="@+id/liveEdgeView"
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:layout_gravity="top"
+            android:visibility="gone"/>
     </com.metallic.chiaki.stream.AspectRatioFrameLayout>
 
     <TextView
@@ -68,6 +75,13 @@
         android:name="com.metallic.chiaki.touchcontrols.TouchpadOnlyFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
+
+    <!-- Status light and Console home looks: their connecting screen (ConnectScreen) -->
+    <FrameLayout
+        android:id="@+id/connectContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"/>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/overlay"

@@ -44,6 +44,15 @@ import com.metallic.chiaki.session.*
 import com.metallic.chiaki.touchcontrols.DefaultTouchControlsFragment
 import com.metallic.chiaki.touchcontrols.TouchControlsFragment
 import com.metallic.chiaki.touchcontrols.TouchpadOnlyFragment
+import android.widget.CompoundButton
+import androidx.core.view.children
+import com.google.android.material.button.MaterialButtonToggleGroup
+import com.metallic.chiaki.databinding.StreamOverlayCardsBinding
+import com.metallic.chiaki.looks.AppStyle
+import com.metallic.chiaki.looks.ConnectProgress
+import com.metallic.chiaki.looks.ConnectScreen
+import com.metallic.chiaki.looks.StreamLook
+import com.metallic.chiaki.looks.applyAppStyle
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -54,11 +63,22 @@ private object StreamQuitDialog: DialogContents()
 private object CreateErrorDialog: DialogContents()
 private object PinRequestDialog: DialogContents()
 
+/** The stream controls: the Classic overlay of activity_stream.xml, or the cards of the other looks */
+private class OverlayViews(
+	val root: View,
+	val onScreenControlsSwitch: CompoundButton,
+	val touchpadOnlySwitch: CompoundButton,
+	val microphoneSwitch: CompoundButton,
+	val displayModeToggle: MaterialButtonToggleGroup,
+	val cards: List<View>)
+
 class StreamActivity : AppCompatActivity()
 {
 	companion object
 	{
 		const val EXTRA_CONNECT_INFO = "connect_info"
+		/** Console name for the connecting screen, optional */
+		const val EXTRA_CONSOLE_NAME = "console_name"
 		private const val HIDE_UI_TIMEOUT_MS = 2000L
 		private const val STATS_INTERVAL_MS = 1000L
 	}
@@ -66,11 +86,16 @@ class StreamActivity : AppCompatActivity()
 	private lateinit var viewModel: StreamViewModel
 	private lateinit var binding: ActivityStreamBinding
 	private lateinit var insetsController: WindowInsetsControllerCompat
+	private lateinit var overlay: OverlayViews
+	private var appStyle = AppStyle.CLASSIC
+	private var connectScreen: ConnectScreen? = null
+	private lateinit var connectProgress: ConnectProgress
 
 	private val uiVisibilityHandler = Handler(Looper.getMainLooper())
 
 	override fun onCreate(savedInstanceState: Bundle?)
 	{
+		appStyle = applyAppStyle(stream = true)
 		super.onCreate(savedInstanceState)
 
 		val connectInfo = IntentCompat.getParcelableExtra(intent, EXTRA_CONNECT_INFO, ConnectInfo::class.java)
@@ -88,6 +113,18 @@ class StreamActivity : AppCompatActivity()
 
 		binding = ActivityStreamBinding.inflate(layoutInflater)
 		setContentView(binding.root)
+		overlay = setupOverlay()
+		connectProgress = ConnectProgress(this, connectInfo.isPsn)
+		connectScreen = ConnectScreen.create(appStyle, this, binding.connectContainer)?.also {
+			binding.connectContainer.addView(it.root)
+			binding.connectContainer.isVisible = true
+			it.show(consoleName, connectProgress)
+		}
+		if(!appStyle.isClassic)
+		{
+			StreamLook.styleStats(appStyle, binding.filterStatsTextView)
+			binding.liveEdgeView.style = appStyle
+		}
 
 		WindowCompat.setDecorFitsSystemWindows(window, false)
 		insetsController = WindowCompat.getInsetsController(window, window.decorView)
@@ -103,28 +140,28 @@ class StreamActivity : AppCompatActivity()
 		}
 
 		viewModel.onScreenControlsEnabled.observe(this, Observer {
-			if(binding.onScreenControlsSwitch.isChecked != it)
-				binding.onScreenControlsSwitch.isChecked = it
-			if(binding.onScreenControlsSwitch.isChecked)
-				binding.touchpadOnlySwitch.isChecked = false
+			if(overlay.onScreenControlsSwitch.isChecked != it)
+				overlay.onScreenControlsSwitch.isChecked = it
+			if(overlay.onScreenControlsSwitch.isChecked)
+				overlay.touchpadOnlySwitch.isChecked = false
 		})
-		binding.onScreenControlsSwitch.setOnCheckedChangeListener { _, isChecked ->
+		overlay.onScreenControlsSwitch.setOnCheckedChangeListener { _, isChecked ->
 			viewModel.setOnScreenControlsEnabled(isChecked)
 			showOverlay()
 		}
 
 		viewModel.touchpadOnlyEnabled.observe(this, Observer {
-			if(binding.touchpadOnlySwitch.isChecked != it)
-				binding.touchpadOnlySwitch.isChecked = it
-			if(binding.touchpadOnlySwitch.isChecked)
-				binding.onScreenControlsSwitch.isChecked = false
+			if(overlay.touchpadOnlySwitch.isChecked != it)
+				overlay.touchpadOnlySwitch.isChecked = it
+			if(overlay.touchpadOnlySwitch.isChecked)
+				overlay.onScreenControlsSwitch.isChecked = false
 		})
-		binding.touchpadOnlySwitch.setOnCheckedChangeListener { _, isChecked ->
+		overlay.touchpadOnlySwitch.setOnCheckedChangeListener { _, isChecked ->
 			viewModel.setTouchpadOnlyEnabled(isChecked)
 			showOverlay()
 		}
 
-		binding.microphoneSwitch.setOnCheckedChangeListener { _, isChecked ->
+		overlay.microphoneSwitch.setOnCheckedChangeListener { _, isChecked ->
 			if(isChecked)
 			{
 				if(checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
@@ -137,7 +174,7 @@ class StreamActivity : AppCompatActivity()
 			showOverlay()
 		}
 
-		binding.displayModeToggle.addOnButtonCheckedListener { _, _, _ ->
+		overlay.displayModeToggle.addOnButtonCheckedListener { _, _, _ ->
 			adjustStreamViewAspect()
 			showOverlay()
 		}
@@ -159,6 +196,8 @@ class StreamActivity : AppCompatActivity()
 		viewModel.session.psnRetryStatus = getString(R.string.status_psn_retry)
 		viewModel.session.status.observe(this, Observer { status ->
 			binding.statusTextView.text = status ?: ""
+			connectProgress.update(status)
+			connectScreen?.show(consoleName, connectProgress)
 		})
 		controllerFeedback = feedback
 		if(Preferences(this).rumbleEnabled)
@@ -179,6 +218,39 @@ class StreamActivity : AppCompatActivity()
 	}
 
 	private var controllerFeedback: ControllerFeedback? = null
+
+	private val consoleName get() = intent.getStringExtra(EXTRA_CONSOLE_NAME)
+
+	private fun setupOverlay(): OverlayViews
+	{
+		if(appStyle.isClassic)
+			return OverlayViews(binding.overlay, binding.onScreenControlsSwitch, binding.touchpadOnlySwitch,
+				binding.microphoneSwitch, binding.displayModeToggle, emptyList())
+		// Same controls as cards in the band below the picture
+		val parent = binding.overlay.parent as ViewGroup
+		val index = parent.indexOfChild(binding.overlay)
+		parent.removeView(binding.overlay)
+		val cards = StreamOverlayCardsBinding.inflate(layoutInflater, parent, false)
+		parent.addView(cards.root, index)
+		cards.leaveButton.setOnClickListener { leaveStream() }
+		return OverlayViews(cards.root, cards.onScreenControlsSwitch, cards.touchpadOnlySwitch,
+			cards.microphoneSwitch, cards.displayModeToggle, cards.cardsLayout.children.toList())
+	}
+
+	private fun showConnectScreen(show: Boolean)
+	{
+		val container = binding.connectContainer
+		if(connectScreen == null || show == (container.isVisible && container.alpha == 1f))
+			return
+		container.animate().cancel()
+		if(show)
+		{
+			container.alpha = 1f
+			container.isVisible = true
+		}
+		else
+			container.animate().alpha(0f).setDuration(300).withEndAction { container.isGone = true }.start()
+	}
 
 	private var filterRenderer: VideoFilterRenderer? = null
 
@@ -215,7 +287,7 @@ class StreamActivity : AppCompatActivity()
 			enableMicrophone()
 		else
 		{
-			binding.microphoneSwitch.isChecked = false
+			overlay.microphoneSwitch.isChecked = false
 			Toast.makeText(this, R.string.microphone_permission_denied, Toast.LENGTH_LONG).show()
 		}
 	}
@@ -224,7 +296,7 @@ class StreamActivity : AppCompatActivity()
 	{
 		if(!viewModel.session.setMicrophone(true))
 		{
-			binding.microphoneSwitch.isChecked = false
+			overlay.microphoneSwitch.isChecked = false
 			Toast.makeText(this, R.string.microphone_failed, Toast.LENGTH_LONG).show()
 		}
 	}
@@ -318,6 +390,14 @@ class StreamActivity : AppCompatActivity()
 			lastFramesRendered = stats.framesRendered
 			lastStatsTimeMs = now
 			val profile = viewModel.session.connectInfo.videoProfile
+			if(!appStyle.isClassic)
+			{
+				binding.liveEdgeView.struggling = StreamLook.struggling(stats.packetLoss, fps, profile.maxFPS)
+				binding.filterStatsTextView.text = StreamLook.formatStats(appStyle, profile.height, fps, stats.bitrateMbps,
+					stats.packetLoss, stats.rttMs, viewModel.session.connectInfo.isPsn, controllerFeedback?.description,
+					filterStats, getString(R.string.stream_stats_route_psn), getString(R.string.stream_stats_route_lan))
+				return
+			}
 			lines += String.format("%dx%d · %.0f fps · %.1f Mbit/s · loss %.1f%% · RTT %.0f ms%s",
 				profile.width, profile.height, fps, stats.bitrateMbps, stats.packetLoss * 100.0, stats.rttMs,
 				if(viewModel.session.connectInfo.isPsn) " · PSN" else " · LAN")
@@ -331,6 +411,7 @@ class StreamActivity : AppCompatActivity()
 	private fun resumeSession()
 	{
 		val session = viewModel.session
+		connectProgress.reset()
 		if(!session.connectInfo.isPsn)
 		{
 			session.setStatus(getString(R.string.status_connecting_lan))
@@ -373,9 +454,11 @@ class StreamActivity : AppCompatActivity()
 		hideSystemUI()
 		filterRenderer?.let { binding.filterSurfaceView.onResume() }
 		resumeSession()
-		if(Preferences(this).videoFilterStats)
+		val showStats = Preferences(this).videoFilterStats
+		// The other looks also read the stats for the light along the picture's edge.
+		if(showStats || !appStyle.isClassic)
 		{
-			binding.filterStatsTextView.isVisible = true
+			binding.filterStatsTextView.isVisible = showStats
 			lastFramesRendered = -1L
 			uiVisibilityHandler.post(statsRunnable)
 		}
@@ -386,7 +469,7 @@ class StreamActivity : AppCompatActivity()
 		super.onPause()
 		uiVisibilityHandler.removeCallbacks(statsRunnable)
 		// The session ends on pause, and with it the microphone.
-		binding.microphoneSwitch.isChecked = false
+		overlay.microphoneSwitch.isChecked = false
 		viewModel.session.pause()
 		filterRenderer?.let { binding.filterSurfaceView.onPause() }
 	}
@@ -415,14 +498,19 @@ class StreamActivity : AppCompatActivity()
 
 	private fun showOverlay()
 	{
-		binding.overlay.isVisible = true
-		binding.overlay.animate()
+		if(!overlay.root.isVisible || overlay.root.alpha < 0.05f)
+		{
+			if(appStyle == AppStyle.CONSOLE_HOME)
+				StreamLook.animateCardsIn(overlay.cards)
+		}
+		overlay.root.isVisible = true
+		overlay.root.animate()
 			.alpha(1.0f)
 			.setListener(object: AnimatorListenerAdapter()
 			{
 				override fun onAnimationEnd(animation: Animator)
 				{
-					binding.overlay.alpha = 1.0f
+					overlay.root.alpha = 1.0f
 				}
 			})
 		uiVisibilityHandler.removeCallbacks(hideSystemUIRunnable)
@@ -431,13 +519,13 @@ class StreamActivity : AppCompatActivity()
 
 	private fun hideOverlay()
 	{
-		binding.overlay.animate()
+		overlay.root.animate()
 			.alpha(0.0f)
 			.setListener(object: AnimatorListenerAdapter()
 			{
 				override fun onAnimationEnd(animation: Animator)
 				{
-					binding.overlay.isGone = true
+					overlay.root.isGone = true
 				}
 			})
 	}
@@ -473,8 +561,16 @@ class StreamActivity : AppCompatActivity()
 
 	private fun stateChanged(state: StreamState)
 	{
-		binding.progressBar.visibility = if(state == StreamStateConnecting) View.VISIBLE else View.GONE
-		binding.statusTextView.visibility = if(state == StreamStateConnecting) View.VISIBLE else View.GONE
+		if(connectScreen != null)
+		{
+			showConnectScreen(state == StreamStateConnecting || state == StreamStateIdle)
+			binding.liveEdgeView.isVisible = state == StreamStateConnected
+		}
+		else
+		{
+			binding.progressBar.visibility = if(state == StreamStateConnecting) View.VISIBLE else View.GONE
+			binding.statusTextView.visibility = if(state == StreamStateConnecting) View.VISIBLE else View.GONE
+		}
 
 		when(state)
 		{
@@ -568,7 +664,7 @@ class StreamActivity : AppCompatActivity()
 	private fun adjustTextureViewAspect(textureView: TextureView)
 	{
 		val trans = TextureViewTransform(viewModel.session.connectInfo.videoProfile, textureView)
-		val resolution = trans.resolutionFor(TransformMode.fromButton(binding.displayModeToggle.checkedButtonId))
+		val resolution = trans.resolutionFor(TransformMode.fromButton(overlay.displayModeToggle.checkedButtonId))
 		Matrix().also {
 			textureView.getTransform(it)
 			it.setScale(resolution.width / trans.viewWidth, resolution.height / trans.viewHeight)
@@ -581,7 +677,7 @@ class StreamActivity : AppCompatActivity()
 	{
 		val videoProfile = viewModel.session.connectInfo.videoProfile
 		binding.aspectRatioLayout.aspectRatio = videoProfile.width.toFloat() / videoProfile.height.toFloat()
-		binding.aspectRatioLayout.mode = TransformMode.fromButton(binding.displayModeToggle.checkedButtonId)
+		binding.aspectRatioLayout.mode = TransformMode.fromButton(overlay.displayModeToggle.checkedButtonId)
 	}
 
 	private fun adjustStreamViewAspect() = adjustSurfaceViewAspect()

@@ -11,6 +11,7 @@ import com.metallic.chiaki.lib.Codec
 import com.metallic.chiaki.lib.ConnectVideoProfile
 import com.metallic.chiaki.lib.VideoFPSPreset
 import com.metallic.chiaki.lib.VideoResolutionPreset
+import com.metallic.chiaki.looks.AppStyle
 import com.metallic.chiaki.stream.VideoFilterSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -100,6 +101,11 @@ class Preferences(context: Context)
 	}.also { sharedPreferences.registerOnSharedPreferenceChangeListener(it) }
 
 	private val resources = context.resources
+
+	val appStyleKey get() = resources.getString(R.string.preferences_app_style_key)
+	var appStyle
+		get() = AppStyle.fromValue(sharedPreferences.getString(appStyleKey, null))
+		set(value) { sharedPreferences.edit().putString(appStyleKey, value.value).apply() }
 
 	val discoveryEnabledKey get() = resources.getString(R.string.preferences_discovery_enabled_key)
 	var discoveryEnabled

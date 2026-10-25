@@ -21,6 +21,7 @@ import com.metallic.chiaki.common.exportAndShareAllSettings
 import com.metallic.chiaki.common.ext.viewModelFactory
 import com.metallic.chiaki.common.getDatabase
 import com.metallic.chiaki.common.importSettingsFromUri
+import com.metallic.chiaki.looks.AppStyle
 
 class DataStore(val preferences: Preferences): PreferenceDataStore()
 {
@@ -56,6 +57,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 
 	override fun getString(key: String, defValue: String?) = when(key)
 	{
+		preferences.appStyleKey -> preferences.appStyle.value
 		preferences.resolutionKey -> preferences.resolution.value
 		preferences.fpsKey -> preferences.fps.value
 		preferences.bitrateKey -> preferences.bitrate?.toString() ?: ""
@@ -73,6 +75,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 	{
 		when(key)
 		{
+			preferences.appStyleKey -> preferences.appStyle = AppStyle.fromValue(value)
 			preferences.resolutionKey ->
 			{
 				val resolution = Preferences.Resolution.values().firstOrNull { it.value == value } ?: return
@@ -172,6 +175,19 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 		val preferences = viewModel.preferences
 		preferenceManager.preferenceDataStore = DataStore(preferences)
 		setPreferencesFromResource(R.xml.preferences, rootKey)
+
+		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_app_style_key))?.let {
+			it.entryValues = AppStyle.values().map { style -> style.value }.toTypedArray()
+			it.entries = AppStyle.values().map { style -> getString(style.title) }.toTypedArray()
+			it.setOnPreferenceChangeListener { _, newValue ->
+				if(newValue != preferences.appStyle.value)
+				{
+					// The value is stored after this returns; recreate with the new theme then.
+					view?.post { activity?.recreate() }
+				}
+				true
+			}
+		}
 
 		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_resolution_key))?.let {
 			it.entryValues = Preferences.resolutionAll.map { res -> res.value }.toTypedArray()

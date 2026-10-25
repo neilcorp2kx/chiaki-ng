@@ -12,5 +12,10 @@
             android:name=".stream.PsnTlsTestActivity"
             android:exported="true"
             android:theme="@style/Theme.AppCompat.NoActionBar"/>
+        <!-- Debug builds only: the looks' screens with sample consoles -->
+        <activity
+            android:name=".looks.ThemePreviewActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"/>
     </application>
 </manifest>

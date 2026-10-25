@@ -19,4 +19,9 @@
         <attr name="drawableIdle" />
         <attr name="drawablePressed" />
     </declare-styleable>
+
+    <!-- Set by each look's theme (see AppStyle) -->
+    <attr name="streamBandBackground" format="reference" />
+    <attr name="streamCardBackground" format="reference" />
+    <attr name="streamTextColor" format="color" />
 </resources>
