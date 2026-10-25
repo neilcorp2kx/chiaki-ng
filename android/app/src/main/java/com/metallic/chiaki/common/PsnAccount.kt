@@ -25,8 +25,9 @@ import java.security.SecureRandom
  * The signed-in PSN account, used for the Account ID and for Remote Play over PSN.
  * Same OAuth flow as the desktop GUI (gui/src/psnaccountid.cpp, gui/src/psntoken.cpp).
  *
- * Tokens are stored in noBackupFilesDir, so they are not part of Android backups
- * and not part of the settings export.
+ * Tokens are stored encrypted with a Keystore key (KeystoreCipher) in noBackupFilesDir,
+ * so they are not readable from the file, not part of Android backups and not part of
+ * the settings export.
  */
 class PsnAccount private constructor(private val context: Context)
 {
@@ -44,7 +45,10 @@ class PsnAccount private constructor(private val context: Context)
 		/** Refresh this long before the access token expires */
 		private const val EXPIRY_MARGIN_MS = 60_000L
 
-		private const val FILE_NAME = "psn_account.json"
+		private const val FILE_NAME = "psn_account.enc"
+		/** Plaintext file of builds before encryption, migrated on first load */
+		private const val LEGACY_FILE_NAME = "psn_account.json"
+		private const val KEY_ALIAS = "chiaki_psn_account"
 		private const val CA_FILE_NAME = "psn_cacerts.pem"
 		private val CA_DIRS = listOf("/apex/com.android.conscrypt/cacerts", "/system/etc/security/cacerts")
 
@@ -83,6 +87,8 @@ class PsnAccount private constructor(private val context: Context)
 	private data class Tokens(val accessToken: String, val refreshToken: String, val expiresAtMs: Long, val accountId: String)
 
 	private val file get() = File(context.noBackupFilesDir, FILE_NAME)
+	private val legacyFile get() = File(context.noBackupFilesDir, LEGACY_FILE_NAME)
+	private val cipher = KeystoreCipher(KEY_ALIAS)
 	private val mutex = Mutex()
 	@Volatile private var tokens: Tokens? = load()
 
@@ -109,6 +115,7 @@ class PsnAccount private constructor(private val context: Context)
 	{
 		tokens = null
 		file.delete()
+		legacyFile.delete()
 	}
 
 	/** A valid access token, refreshed if needed. Throws UnauthorizedException when sign-in is needed again. */
@@ -221,16 +228,48 @@ class PsnAccount private constructor(private val context: Context)
 		}
 	}
 
-	private fun load(): Tokens? = try
+	private fun tokensFromJson(json: JSONObject) =
+		Tokens(json.getString("access_token"), json.getString("refresh_token"), json.getLong("expires_at_ms"), json.getString("account_id"))
+
+	private fun load(): Tokens?
 	{
-		if(!file.exists()) null else JSONObject(file.readText()).let {
-			Tokens(it.getString("access_token"), it.getString("refresh_token"), it.getLong("expires_at_ms"), it.getString("account_id"))
+		// A plaintext file comes from an older build and is newer than any encrypted file
+		// (e.g. after using an older build again): encrypt it and delete it.
+		if(legacyFile.exists())
+		{
+			val legacy = try { tokensFromJson(JSONObject(legacyFile.readText())) }
+				catch(e: Exception) { Log.w(TAG, "Could not read stored PSN account", e); null }
+			if(legacy == null)
+			{
+				legacyFile.delete()
+			}
+			else
+			{
+				try
+				{
+					save(legacy)
+					legacyFile.delete()
+				}
+				catch(e: Exception)
+				{
+					Log.w(TAG, "Could not encrypt stored PSN account", e)
+				}
+				return legacy
+			}
 		}
-	}
-	catch(e: Exception)
-	{
-		Log.w(TAG, "Could not read stored PSN account", e)
-		null
+		if(!file.exists())
+			return null
+		return try
+		{
+			tokensFromJson(JSONObject(String(cipher.decrypt(file.readBytes()), Charsets.UTF_8)))
+		}
+		catch(e: Exception)
+		{
+			// E.g. the Keystore key is gone after a device reset: sign in again.
+			Log.w(TAG, "Could not decrypt stored PSN account, signing out", e)
+			file.delete()
+			null
+		}
 	}
 
 	private fun save(tokens: Tokens)
@@ -241,7 +280,7 @@ class PsnAccount private constructor(private val context: Context)
 			.put("expires_at_ms", tokens.expiresAtMs)
 			.put("account_id", tokens.accountId)
 		val tmp = File(file.path + ".tmp")
-		tmp.writeText(json.toString())
+		tmp.writeBytes(cipher.encrypt(json.toString().toByteArray(Charsets.UTF_8)))
 		tmp.renameTo(file)
 		this.tokens = tokens
 	}
