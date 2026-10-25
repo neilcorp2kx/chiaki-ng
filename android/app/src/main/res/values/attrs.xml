@@ -24,6 +24,7 @@
     <attr name="streamBandBackground" format="reference" />
     <attr name="streamCardBackground" format="reference" />
     <attr name="streamTextColor" format="color" />
+    <attr name="streamMenuButtonBackground" format="reference" />
     <!-- Settings and forms of the Status light and Console home looks -->
     <attr name="lookTitleFont" format="reference" />
     <attr name="lookSettingsBackground" format="reference" />

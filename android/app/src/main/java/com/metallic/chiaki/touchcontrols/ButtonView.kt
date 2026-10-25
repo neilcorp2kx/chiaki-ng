@@ -7,6 +7,7 @@ import android.graphics.Canvas
 import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.util.Log
+import android.graphics.Rect
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -63,14 +64,21 @@ class ButtonView @JvmOverloads constructor(
 	 */
 	private fun bestFittingTouchView(x: Float, y: Float): View
 	{
-		val loc = locationOnScreen + Vector(x, y)
+		// Compare in the parent's coordinates, where hit rectangles include each button's
+		// position and size as the player arranged it (ControlsLayout).
+		val point = floatArrayOf(x, y)
+		matrix.mapPoints(point)
+		val px = point[0] + left
+		val py = point[1] + top
+		val hit = Rect()
 		return (parent as? ViewGroup)?.children?.filter {
 			it is ButtonView
 		}?.filter {
-			val pos = it.locationOnScreen
-			loc.x >= pos.x && loc.x < pos.x + it.width && loc.y >= pos.y && loc.y < pos.y + it.height
+			it.getHitRect(hit)
+			hit.contains(px.toInt(), py.toInt())
 		}?.sortedBy {
-			(loc - (it.locationOnScreen + Vector(it.width.toFloat(), it.height.toFloat()) * 0.5f)).lengthSq
+			it.getHitRect(hit)
+			(Vector(px, py) - Vector(hit.exactCenterX(), hit.exactCenterY())).lengthSq
 		}?.firstOrNull() ?: this
 	}
 

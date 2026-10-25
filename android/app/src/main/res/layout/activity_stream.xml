@@ -173,4 +173,26 @@
 
 </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <!-- Opens the stream menu; touch and hold to arrange the on-screen controls. Movable itself (ControlsLayout "menu"). -->
+    <ImageView
+        android:id="@+id/menuButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="6dp"
+        android:background="?attr/streamMenuButtonBackground"
+        android:clickable="true"
+        android:contentDescription="@string/stream_menu"
+        android:focusable="false"
+        android:padding="9dp"
+        android:src="@drawable/ic_stream_menu"
+        android:visibility="gone" />
+
+    <!-- Arranging the on-screen controls (ControlsEditorView) -->
+    <FrameLayout
+        android:id="@+id/controlsEditorContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
 </FrameLayout>

@@ -39,5 +39,9 @@
             app:key="@string/preferences_button_haptic_enabled_key"
             app:title="@string/settings_touch_haptics_title"
             app:summary="@string/preferences_button_haptic_enabled_summary" />
+        <Preference
+            app:key="reset_controls"
+            app:title="@string/settings_reset_controls_title"
+            app:summary="@string/settings_reset_controls_summary" />
     </PreferenceCategory>
 </PreferenceScreen>

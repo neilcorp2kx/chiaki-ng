@@ -25,6 +25,8 @@ import com.metallic.chiaki.looks.AppStyle
 import android.view.View
 import androidx.annotation.XmlRes
 import com.metallic.chiaki.manualconsole.EditManualConsoleActivity
+import com.metallic.chiaki.touchcontrols.ControlsLayout
+import android.widget.Toast
 
 class DataStore(val preferences: Preferences): PreferenceDataStore()
 {
@@ -342,6 +344,11 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 		})
 
 		preferenceScreen.findPreference<Preference>("psn_account")?.setOnPreferenceClickListener { psnAccountClicked(); true }
+		preferenceScreen.findPreference<Preference>("reset_controls")?.setOnPreferenceClickListener {
+			ControlsLayout.resetAll(context)
+			Toast.makeText(context, R.string.settings_reset_controls_done, Toast.LENGTH_SHORT).show()
+			true
+		}
 		preferenceScreen.findPreference<Preference>("add_manual_console")?.setOnPreferenceClickListener {
 			startActivity(Intent(context, EditManualConsoleActivity::class.java))
 			true

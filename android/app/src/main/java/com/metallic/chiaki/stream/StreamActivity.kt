@@ -45,6 +45,8 @@ import com.metallic.chiaki.session.*
 import com.metallic.chiaki.touchcontrols.DefaultTouchControlsFragment
 import com.metallic.chiaki.touchcontrols.TouchControlsFragment
 import com.metallic.chiaki.touchcontrols.TouchpadOnlyFragment
+import com.metallic.chiaki.touchcontrols.ControlsEditorView
+import com.metallic.chiaki.touchcontrols.ControlsLayout
 import android.widget.CompoundButton
 import androidx.core.view.children
 import com.google.android.material.button.MaterialButtonToggleGroup
@@ -72,7 +74,8 @@ private class OverlayViews(
 	val touchpadOnlySwitch: CompoundButton,
 	val microphoneSwitch: CompoundButton,
 	val displayModeToggle: MaterialButtonToggleGroup,
-	val cards: List<View>)
+	val cards: List<View>,
+	val arrangeButton: View? = null)
 
 class StreamActivity : AppCompatActivity()
 {
@@ -81,7 +84,11 @@ class StreamActivity : AppCompatActivity()
 		const val EXTRA_CONNECT_INFO = "connect_info"
 		/** Console name for the connecting screen, optional */
 		const val EXTRA_CONSOLE_NAME = "console_name"
+		/** Debug builds only: show the stream screen as connected without a console, for UI tests */
+		const val EXTRA_DEBUG_PRETEND_CONNECTED = "debug_pretend_connected"
 		private const val HIDE_UI_TIMEOUT_MS = 2000L
+		/** The stream menu closes by itself after this long without use */
+		private const val MENU_TIMEOUT_MS = 10000L
 		private const val STATS_INTERVAL_MS = 1000L
 	}
 
@@ -139,7 +146,7 @@ class StreamActivity : AppCompatActivity()
 			val systemBars = insets.isVisible(WindowInsetsCompat.Type.systemBars())
 			if(systemBars)
 				showOverlay()
-			else
+			else if(!menuOpen)
 				hideOverlay()
 			insets
 		}
@@ -193,7 +200,15 @@ class StreamActivity : AppCompatActivity()
 			viewModel.session.attachToSurfaceView(binding.surfaceView)
 		viewModel.session.state.observe(this, Observer { this.stateChanged(it) })
 		viewModel.session.keyboardEvent.observe(this, Observer { it?.let { keyboardEvent(it) } })
-		onBackPressedDispatcher.addCallback(this) { leaveStream() }
+		onBackPressedDispatcher.addCallback(this) {
+			when
+			{
+				controlsEditor != null -> controlsEditor?.cancel()
+				menuOpen -> closeMenu()
+				else -> leaveStream()
+			}
+		}
+		setupMenuButton()
 		adjustStreamViewAspect()
 
 		val feedback = ControllerFeedback(this) { viewModel.setControllerConnected(it != null) }
@@ -239,11 +254,74 @@ class StreamActivity : AppCompatActivity()
 		parent.addView(cards.root, index)
 		cards.leaveButton.setOnClickListener { leaveStream() }
 		return OverlayViews(cards.root, cards.onScreenControlsSwitch, cards.touchpadOnlySwitch,
-			cards.microphoneSwitch, cards.displayModeToggle, cards.cardsLayout.children.toList())
+			cards.microphoneSwitch, cards.displayModeToggle, cards.cardsLayout.children.toList(), cards.arrangeButton)
 	}
 
 	/** The connecting screen is up; it covers the touch controls */
 	private var connectScreenShown = true
+
+	/** The stream menu was opened with the menu button and stays until closed */
+	private var menuOpen = false
+	private val closeMenuRunnable = Runnable { closeMenu() }
+	private var controlsEditor: ControlsEditorView? = null
+
+	private fun setupMenuButton()
+	{
+		val button = binding.menuButton
+		button.setOnClickListener { if(menuOpen) closeMenu() else openMenu() }
+		button.setOnLongClickListener { arrangeControls(); true }
+		overlay.arrangeButton?.setOnClickListener { arrangeControls() }
+		ControlsLayout.keepApplied(binding.mainStreamLayout) { mapOf("menu" to binding.menuButton) }
+		// Stats move down a little so the menu button does not cover them.
+		(binding.filterStatsTextView.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
+			it.topMargin = (52 * resources.displayMetrics.density).toInt()
+			binding.filterStatsTextView.layoutParams = it
+		}
+	}
+
+	private fun openMenu()
+	{
+		menuOpen = true
+		binding.menuButton.setImageResource(R.drawable.ic_stream_menu_close)
+		binding.menuButton.contentDescription = getString(R.string.stream_menu_close)
+		showOverlay()
+	}
+
+	private fun closeMenu()
+	{
+		menuOpen = false
+		uiVisibilityHandler.removeCallbacks(closeMenuRunnable)
+		binding.menuButton.setImageResource(R.drawable.ic_stream_menu)
+		binding.menuButton.contentDescription = getString(R.string.stream_menu)
+		hideOverlay()
+		hideSystemUI()
+	}
+
+	/** Move and resize the on-screen controls and the menu button */
+	private fun arrangeControls()
+	{
+		if(controlsEditor != null)
+			return
+		if(menuOpen)
+			closeMenu()
+		val fragment = supportFragmentManager.findFragmentById(R.id.controlsFragment) as? DefaultTouchControlsFragment ?: return
+		val controlsView = fragment.view ?: return
+		val key = ControlsLayout.key(this)
+		val targets = fragment.movableViews() + ("menu" to binding.menuButton)
+		// Show the controls while arranging, also when a controller or touchpad-only hides them.
+		controlsView.isVisible = true
+		val editor = ControlsEditorView(this, targets, ControlsLayout.load(this, key)) { placements ->
+			if(placements != null)
+				ControlsLayout.save(this, key, placements)
+			binding.controlsEditorContainer.removeAllViews()
+			binding.controlsEditorContainer.isGone = true
+			controlsEditor = null
+			controlsView.isVisible = viewModel.onScreenControlsVisible.value ?: true
+		}
+		binding.controlsEditorContainer.addView(editor, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+		binding.controlsEditorContainer.isVisible = true
+		controlsEditor = editor
+	}
 
 	private fun showConnectScreen(show: Boolean)
 	{
@@ -489,12 +567,19 @@ class StreamActivity : AppCompatActivity()
 		}
 	}
 
+	private val pretendConnected get() =
+		(applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 &&
+			intent.getBooleanExtra(EXTRA_DEBUG_PRETEND_CONNECTED, false)
+
 	override fun onResume()
 	{
 		super.onResume()
 		hideSystemUI()
 		filterRenderer?.let { binding.filterSurfaceView.onResume() }
-		resumeSession()
+		if(pretendConnected)
+			stateChanged(StreamStateConnected)
+		else
+			resumeSession()
 		val showStats = Preferences(this).videoFilterStats
 		// The other looks also read the stats for the light along the picture's edge.
 		if(showStats || !appStyle.isClassic)
@@ -544,6 +629,11 @@ class StreamActivity : AppCompatActivity()
 		{
 			if(appStyle == AppStyle.CONSOLE_HOME)
 				StreamLook.animateCardsIn(overlay.cards)
+		}
+		if(menuOpen)
+		{
+			uiVisibilityHandler.removeCallbacks(closeMenuRunnable)
+			uiVisibilityHandler.postDelayed(closeMenuRunnable, MENU_TIMEOUT_MS)
 		}
 		overlay.root.isVisible = true
 		overlay.root.animate()
@@ -603,6 +693,7 @@ class StreamActivity : AppCompatActivity()
 
 	private fun stateChanged(state: StreamState)
 	{
+		binding.menuButton.isVisible = state == StreamStateConnected
 		if(connectScreen != null)
 		{
 			showConnectScreen(state == StreamStateConnecting || state == StreamStateIdle)

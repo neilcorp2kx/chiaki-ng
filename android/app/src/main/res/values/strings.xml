@@ -340,4 +340,25 @@
     <string name="settings_preview_deband">Example: a dark sky gradient</string>
     <string name="settings_preview_sharpen">Example: fine detail</string>
     <string name="settings_preview_look">How the consoles screen looks</string>
+
+    <!-- Stream menu button and arranging the on-screen controls -->
+    <string name="stream_menu">Stream menu. Touch and hold to arrange the controls</string>
+    <string name="stream_menu_close">Close the stream menu</string>
+    <string name="stream_arrange_controls">Arrange controls</string>
+    <string name="controls_arrange_hint">Drag a control to move it. Pinch, or use Smaller and Larger, to resize it.</string>
+    <string name="controls_smaller">Smaller</string>
+    <string name="controls_larger">Larger</string>
+    <string name="controls_reset">Reset</string>
+    <string name="controls_dpad">D-pad</string>
+    <string name="controls_face">Face buttons</string>
+    <string name="controls_left_stick">Left stick</string>
+    <string name="controls_right_stick">Right stick</string>
+    <string name="controls_touchpad">Touchpad</string>
+    <string name="controls_menu">Menu</string>
+    <string name="controls_share">Create</string>
+    <string name="controls_options">Options</string>
+    <string name="controls_ps">PS</string>
+    <string name="settings_reset_controls_title">Reset control positions</string>
+    <string name="settings_reset_controls_summary">Puts the on-screen controls back where they started. To move them, touch and hold the menu button while playing.</string>
+    <string name="settings_reset_controls_done">The on-screen controls are back in their places</string>
 </resources>

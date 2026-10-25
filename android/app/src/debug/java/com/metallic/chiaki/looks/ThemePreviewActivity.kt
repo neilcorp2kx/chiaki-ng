@@ -72,7 +72,8 @@ class ThemePreviewActivity: AppCompatActivity()
 			val info = ConnectInfo(true, "192.0.2.1", ByteArray(0x10), ByteArray(0x10), Preferences(this).videoProfile)
 			startActivity(Intent(this, StreamActivity::class.java)
 				.putExtra(StreamActivity.EXTRA_CONNECT_INFO, info)
-				.putExtra(StreamActivity.EXTRA_CONSOLE_NAME, "Test console"))
+				.putExtra(StreamActivity.EXTRA_CONSOLE_NAME, "Test console")
+				.putExtra(StreamActivity.EXTRA_DEBUG_PRETEND_CONNECTED, intent.getBooleanExtra("pretend", false)))
 			finish()
 			return
 		}

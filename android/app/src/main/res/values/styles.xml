@@ -109,6 +109,7 @@
         <item name="colorAccent">@color/accent</item>
         <item name="materialAlertDialogTheme">@style/AppTheme.AlertDialog</item>
         <item name="android:windowBackground">@color/stream_background</item>
+        <item name="streamMenuButtonBackground">@drawable/stream_menu_button_classic</item>
     </style>
 
     <!-- "Status light" look (AppStyle.STATUS_LIGHT) -->
@@ -171,6 +172,7 @@
         <item name="streamBandBackground">@drawable/sl_band</item>
         <item name="streamCardBackground">@drawable/sl_stream_card</item>
         <item name="streamTextColor">@color/sl_frost</item>
+        <item name="streamMenuButtonBackground">@drawable/stream_menu_button_sl</item>
     </style>
 
     <!-- "Console home" look (AppStyle.CONSOLE_HOME) -->
@@ -238,6 +240,7 @@
         <item name="streamBandBackground">@drawable/ch_band</item>
         <item name="streamCardBackground">@drawable/ch_stream_card</item>
         <item name="streamTextColor">@color/ch_lumen</item>
+        <item name="streamMenuButtonBackground">@drawable/stream_menu_button_ch</item>
     </style>
 
     <!-- Text styles of the two looks -->

@@ -89,6 +89,29 @@ class DefaultTouchControlsFragment : TouchControlsFragment()
 		onScreenControlsEnabled?.observe(viewLifecycleOwner, Observer {
 			view.visibility = if(it) View.VISIBLE else View.GONE
 		})
+
+		ControlsLayout.keepApplied(view) { movableViews() }
+	}
+
+	/** The controls the player can move and resize (ControlsLayout), by their stored name */
+	fun movableViews(): Map<String, View>
+	{
+		val b = _binding ?: return emptyMap()
+		return mapOf(
+			"dpad" to b.dpadView,
+			"face" to b.faceButtonsLayout,
+			"lstick" to b.leftAnalogStickView,
+			"rstick" to b.rightAnalogStickView,
+			"touchpad" to b.touchpadView,
+			"l1" to b.l1ButtonView,
+			"l2" to b.l2ButtonView,
+			"r1" to b.r1ButtonView,
+			"r2" to b.r2ButtonView,
+			"share" to b.shareButtonView,
+			"options" to b.optionsButtonView,
+			"l3" to b.l3ButtonView,
+			"r3" to b.r3ButtonView,
+			"ps" to b.psButtonView)
 	}
 
 	private fun dpadStateChanged(direction: DPadView.Direction?)
