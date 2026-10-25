@@ -79,7 +79,9 @@ data class ConnectInfo(
 	/** With duid: register the console over PSN (no PIN), send SessionRegistEvent and stop */
 	val autoRegist: Boolean = false,
 	/** Experimental: the console sends its text fields to the client keyboard (KeyboardEvent) */
-	val enableKeyboard: Boolean = false
+	val enableKeyboard: Boolean = false,
+	/** > 0: connect as a DualSense client and turn haptics into RumbleEvents at this strength (100 = desktop "Normal") */
+	val hapticsRumblePercent: Int = 0
 ): Parcelable
 {
 	val isPsn get() = duid != null
@@ -362,6 +364,10 @@ data class KeyboardEvent(val type: Type, val text: String?): Event()
 {
 	enum class Type { OPEN, TEXT_CHANGE, REMOTE_CLOSE }
 }
+/** Lightbar color requested by the console (DualSense clients) */
+data class LedColorEvent(val red: Int, val green: Int, val blue: Int): Event()
+/** Player number requested by the console (DualSense clients) */
+data class PlayerIndexEvent(val playerIndex: Int): Event()
 /** The console was registered over PSN (ConnectInfo.autoRegist) */
 data class SessionRegistEvent(val host: RegistHost): Event()
 
@@ -427,6 +433,16 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean)
 	private fun eventRegist(host: RegistHost)
 	{
 		event(SessionRegistEvent(host))
+	}
+
+	private fun eventLedColor(red: Int, green: Int, blue: Int)
+	{
+		event(LedColorEvent(red, green, blue))
+	}
+
+	private fun eventPlayerIndex(playerIndex: Int)
+	{
+		event(PlayerIndexEvent(playerIndex))
 	}
 
 	private fun eventKeyboard(type: Int, text: String?)

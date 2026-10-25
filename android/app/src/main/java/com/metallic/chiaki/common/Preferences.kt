@@ -56,6 +56,15 @@ class Preferences(context: Context)
 		HIGH("high", R.string.preferences_video_filter_high, 0.2f)
 	}
 
+	/** Strength of haptics turned into rumble, percent of the desktop GUI's "Normal" */
+	enum class HapticsRumble(val value: String, @StringRes val title: Int, val percent: Int)
+	{
+		OFF("off", R.string.preferences_video_filter_off, 0),
+		WEAK("weak", R.string.preferences_haptics_rumble_weak, 50),
+		NORMAL("normal", R.string.preferences_haptics_rumble_normal, 100),
+		STRONG("strong", R.string.preferences_haptics_rumble_strong, 200)
+	}
+
 	enum class LeaveAction(val value: String, @StringRes val title: Int)
 	{
 		ASK("ask", R.string.preferences_leave_action_ask),
@@ -77,6 +86,8 @@ class Preferences(context: Context)
 		val sharpenAll = Sharpen.values()
 		val leaveActionDefault = LeaveAction.ASK
 		val leaveActionAll = LeaveAction.values()
+		val hapticsRumbleDefault = HapticsRumble.NORMAL
+		val hapticsRumbleAll = HapticsRumble.values()
 	}
 
 	private val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -208,6 +219,20 @@ class Preferences(context: Context)
 			Sharpen.values().firstOrNull { it.value == value }
 		} ?: sharpenDefault
 		set(value) { sharedPreferences.edit().putString(sharpenKey, value.value).apply() }
+
+	val hapticsRumbleKey get() = resources.getString(R.string.preferences_haptics_rumble_key)
+	var hapticsRumble
+		get() = sharedPreferences.getString(hapticsRumbleKey, hapticsRumbleDefault.value)?.let { value ->
+			HapticsRumble.values().firstOrNull { it.value == value }
+		} ?: hapticsRumbleDefault
+		set(value) { sharedPreferences.edit().putString(hapticsRumbleKey, value.value).apply() }
+	/** For ConnectInfo.hapticsRumblePercent: 0 when rumble is off */
+	val hapticsRumblePercent get() = if(rumbleEnabled) hapticsRumble.percent else 0
+
+	val controllerMotionKey get() = resources.getString(R.string.preferences_controller_motion_key)
+	var controllerMotion
+		get() = sharedPreferences.getBoolean(controllerMotionKey, true)
+		set(value) { sharedPreferences.edit().putBoolean(controllerMotionKey, value).apply() }
 
 	val leaveActionKey get() = resources.getString(R.string.preferences_leave_action_key)
 	var leaveAction

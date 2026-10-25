@@ -42,6 +42,9 @@ class StreamSession(
 	private val _keyboardEvent = MutableLiveData<KeyboardEvent?>(null)
 	/** Console text field events, only with ConnectInfo.enableKeyboard */
 	val keyboardEvent: LiveData<KeyboardEvent?> get() = _keyboardEvent
+	private val _lightState = MutableLiveData<Event?>(null)
+	/** Latest LedColorEvent or PlayerIndexEvent */
+	val lightState: LiveData<Event?> get() = _lightState
 	private val _rumbleState = MutableLiveData<RumbleEvent>(RumbleEvent(0U, 0U))
 	val rumbleState: LiveData<RumbleEvent> get() = _rumbleState
 
@@ -146,6 +149,7 @@ class StreamSession(
 			)
 			is RumbleEvent -> _rumbleState.postValue(event)
 			is KeyboardEvent -> _keyboardEvent.postValue(event)
+			is LedColorEvent, is PlayerIndexEvent -> _lightState.postValue(event)
 		}
 	}
 

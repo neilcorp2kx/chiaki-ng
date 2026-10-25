@@ -12,6 +12,7 @@
 #include <chiaki/remote/holepunch.h>
 
 #include <string.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include <linux/in.h>
 #include <linux/in6.h>
@@ -161,6 +162,15 @@ typedef struct android_chiaki_session_t
 
 	jmethodID java_session_event_regist_meth;
 	jmethodID java_session_event_keyboard_meth;
+	jmethodID java_session_event_led_meth;
+	jmethodID java_session_event_player_index_meth;
+
+	// Haptics as rumble (connect_info.enable_dualsense), like the desktop GUI's PushHapticsFrame()
+	int haptics_rumble_percent;
+	uint32_t haptics_max_left;
+	uint32_t haptics_max_right;
+	int haptics_packets;
+	bool haptics_rumbling;
 	jclass java_target_class;
 	jclass java_regist_host_class;
 	jmethodID java_regist_host_ctor;
@@ -273,6 +283,13 @@ static void android_chiaki_event_cb(ChiakiEvent *event, void *user)
 				E->DeleteLocalRef(env, text);
 			break;
 		}
+		case CHIAKI_EVENT_LED_COLOR:
+			E->CallVoidMethod(env, session->java_session, session->java_session_event_led_meth,
+					(jint)event->led_state[0], (jint)event->led_state[1], (jint)event->led_state[2]);
+			break;
+		case CHIAKI_EVENT_PLAYER_INDEX:
+			E->CallVoidMethod(env, session->java_session, session->java_session_event_player_index_meth, (jint)event->player_index);
+			break;
 		case CHIAKI_EVENT_HOLEPUNCH:
 			CHIAKI_LOGI(session->log, "PSN data connection %s", event->data_holepunch.finished ? "established" : "pending");
 			break;
@@ -281,6 +298,51 @@ static void android_chiaki_event_cb(ChiakiEvent *event, void *user)
 	}
 
 	(*global_vm)->DetachCurrentThread(global_vm);
+}
+
+#define HAPTICS_PACKETS_PER_RUMBLE 3 // as RUMBLE_HAPTICS_PACKETS_PER_RUMBLE in the desktop GUI
+#define HAPTICS_RUMBLE_MIN_STRENGTH 100 // as HAPTIC_RUMBLE_MIN_STRENGTH
+
+/** Haptics PCM (stereo 16 bit) -> left/right rumble strength, sent as a rumble event */
+static void android_chiaki_haptics_frame(uint8_t *buf, size_t buf_size, void *user)
+{
+	AndroidChiakiSession *session = user;
+	size_t count = buf_size / (2 * sizeof(int16_t));
+	if(count == 0)
+		return;
+	uint32_t sum_left = 0, sum_right = 0;
+	for(size_t i = 0; i < count; i++)
+	{
+		int16_t l, r;
+		memcpy(&l, buf + i * 4, sizeof(l));
+		memcpy(&r, buf + i * 4 + 2, sizeof(r));
+		sum_left += (uint32_t)abs(l) * 2;
+		sum_right += (uint32_t)abs(r) * 2;
+	}
+	uint32_t left = sum_left / count, right = sum_right / count;
+	if(left > session->haptics_max_left)
+		session->haptics_max_left = left;
+	if(right > session->haptics_max_right)
+		session->haptics_max_right = right;
+	if(++session->haptics_packets < HAPTICS_PACKETS_PER_RUMBLE)
+		return;
+
+	left = session->haptics_max_left > HAPTICS_RUMBLE_MIN_STRENGTH ? session->haptics_max_left : 0;
+	right = session->haptics_max_right > HAPTICS_RUMBLE_MIN_STRENGTH ? session->haptics_max_right : 0;
+	session->haptics_max_left = session->haptics_max_right = 0;
+	session->haptics_packets = 0;
+	if(left == 0 && right == 0 && !session->haptics_rumbling)
+		return;
+	session->haptics_rumbling = left != 0 || right != 0;
+
+	// Scale the 16 bit strength by the intensity setting to the 0-255 rumble range.
+	uint32_t l8 = left * (uint32_t)session->haptics_rumble_percent / 100 / 256;
+	uint32_t r8 = right * (uint32_t)session->haptics_rumble_percent / 100 / 256;
+	ChiakiEvent event = { 0 };
+	event.type = CHIAKI_EVENT_RUMBLE;
+	event.rumble.left = l8 > 255 ? 255 : (uint8_t)l8;
+	event.rumble.right = r8 > 255 ? 255 : (uint8_t)r8;
+	android_chiaki_event_cb(&event, session);
 }
 
 JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject result, jobject connect_info_obj, jstring log_file_str, jboolean log_verbose, jobject java_session)
@@ -310,6 +372,7 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	jbyteArray psn_account_id_array = E->GetObjectField(env, connect_info_obj, E->GetFieldID(env, connect_info_class, "psnAccountId", "[B"));
 	jboolean auto_regist = E->GetBooleanField(env, connect_info_obj, E->GetFieldID(env, connect_info_class, "autoRegist", "Z"));
 	jboolean enable_keyboard = E->GetBooleanField(env, connect_info_obj, E->GetFieldID(env, connect_info_class, "enableKeyboard", "Z"));
+	jint haptics_rumble_percent = E->GetIntField(env, connect_info_obj, E->GetFieldID(env, connect_info_class, "hapticsRumblePercent", "I"));
 
 	ChiakiConnectInfo connect_info = { 0 };
 	connect_info.ps5 = ps5;
@@ -357,6 +420,8 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 
 	connect_info.video_profile_auto_downgrade = true;
 	connect_info.enable_keyboard = enable_keyboard;
+	// The console sends haptics (instead of rumble, for games that use them) only to DualSense clients.
+	connect_info.enable_dualsense = haptics_rumble_percent > 0;
 
 	if(duid_string)
 	{
@@ -446,6 +511,16 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	session->java_session_event_rumble_meth = E->GetMethodID(env, session->java_session_class, "eventRumble", "(II)V");
 	session->java_session_event_regist_meth = E->GetMethodID(env, session->java_session_class, "eventRegist", "(L"BASE_PACKAGE"/RegistHost;)V");
 	session->java_session_event_keyboard_meth = E->GetMethodID(env, session->java_session_class, "eventKeyboard", "(ILjava/lang/String;)V");
+	session->java_session_event_led_meth = E->GetMethodID(env, session->java_session_class, "eventLedColor", "(III)V");
+	session->java_session_event_player_index_meth = E->GetMethodID(env, session->java_session_class, "eventPlayerIndex", "(I)V");
+	session->haptics_rumble_percent = haptics_rumble_percent;
+	if(haptics_rumble_percent > 0)
+	{
+		ChiakiAudioSink haptics_sink = { 0 };
+		haptics_sink.user = session;
+		haptics_sink.frame_cb = android_chiaki_haptics_frame;
+		chiaki_session_set_haptics_sink(&session->session, &haptics_sink);
+	}
 	session->java_target_class = E->NewGlobalRef(env, E->FindClass(env, BASE_PACKAGE"/Target"));
 	session->java_regist_host_class = E->NewGlobalRef(env, E->FindClass(env, BASE_PACKAGE"/RegistHost"));
 	session->java_regist_host_ctor = E->GetMethodID(env, session->java_regist_host_class, "<init>", REGIST_HOST_CTOR_SIG);

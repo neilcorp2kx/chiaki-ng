@@ -233,7 +233,8 @@ class MainActivity : AppCompatActivity()
 				psnToken = token,
 				psnAccountId = psnAccount.accountId,
 				autoRegist = registeredHost == null,
-				enableKeyboard = Preferences(this@MainActivity).keyboardEnabled)
+				enableKeyboard = Preferences(this@MainActivity).keyboardEnabled,
+				hapticsRumblePercent = if(device.ps5) Preferences(this@MainActivity).hapticsRumblePercent else 0)
 			Intent(this@MainActivity, StreamActivity::class.java).let {
 				it.putExtra(StreamActivity.EXTRA_CONNECT_INFO, connectInfo)
 				startActivity(it)
@@ -254,7 +255,8 @@ class MainActivity : AppCompatActivity()
 			fun connect(address: String = host.host) {
 				val preferences = Preferences(this)
 				val connectInfo = ConnectInfo(host.isPS5, address, registeredHost.rpRegistKey, registeredHost.rpKey, preferences.videoProfile,
-					enableKeyboard = preferences.keyboardEnabled)
+					enableKeyboard = preferences.keyboardEnabled,
+					hapticsRumblePercent = if(host.isPS5) preferences.hapticsRumblePercent else 0)
 				Intent(this, StreamActivity::class.java).let {
 					it.putExtra(StreamActivity.EXTRA_CONNECT_INFO, connectInfo)
 					startActivity(it)

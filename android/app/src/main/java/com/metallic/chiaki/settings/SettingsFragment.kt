@@ -33,6 +33,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.buttonHapticEnabledKey -> preferences.buttonHapticEnabled
 		preferences.videoFilterStatsKey -> preferences.videoFilterStats
 		preferences.keyboardEnabledKey -> preferences.keyboardEnabled
+		preferences.controllerMotionKey -> preferences.controllerMotion
 		else -> defValue
 	}
 
@@ -47,6 +48,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 			preferences.buttonHapticEnabledKey -> preferences.buttonHapticEnabled = value
 			preferences.videoFilterStatsKey -> preferences.videoFilterStats = value
 			preferences.keyboardEnabledKey -> preferences.keyboardEnabled = value
+			preferences.controllerMotionKey -> preferences.controllerMotion = value
 		}
 	}
 
@@ -60,6 +62,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.codecKey -> preferences.codec.value
 		preferences.debandKey -> preferences.deband.value
 		preferences.leaveActionKey -> preferences.leaveAction.value
+		preferences.hapticsRumbleKey -> preferences.hapticsRumble.value
 		preferences.sharpenKey -> preferences.sharpen.value
 		else -> defValue
 	}
@@ -89,6 +92,11 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 			{
 				val codec = Preferences.Codec.values().firstOrNull { it.value == value } ?: return
 				preferences.codec = codec
+			}
+			preferences.hapticsRumbleKey ->
+			{
+				val haptics = Preferences.HapticsRumble.values().firstOrNull { it.value == value } ?: return
+				preferences.hapticsRumble = haptics
 			}
 			preferences.leaveActionKey ->
 			{
@@ -215,6 +223,11 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_codec_key))?.let {
 			it.entryValues = Preferences.codecAll.map { codec -> codec.value }.toTypedArray()
 			it.entries = Preferences.codecAll.map { codec -> getString(codec.title) }.toTypedArray()
+		}
+
+		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_haptics_rumble_key))?.let {
+			it.entryValues = Preferences.hapticsRumbleAll.map { h -> h.value }.toTypedArray()
+			it.entries = Preferences.hapticsRumbleAll.map { h -> getString(h.title) }.toTypedArray()
 		}
 
 		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_leave_action_key))?.let {

@@ -36,6 +36,8 @@ import com.metallic.chiaki.common.ext.viewModelFactory
 import com.metallic.chiaki.databinding.ActivityStreamBinding
 import com.metallic.chiaki.lib.Codec
 import com.metallic.chiaki.lib.KeyboardEvent
+import com.metallic.chiaki.lib.LedColorEvent
+import com.metallic.chiaki.lib.PlayerIndexEvent
 import com.metallic.chiaki.lib.ConnectInfo
 import com.metallic.chiaki.lib.ConnectVideoProfile
 import com.metallic.chiaki.session.*
@@ -152,21 +154,26 @@ class StreamActivity : AppCompatActivity()
 		onBackPressedDispatcher.addCallback(this) { leaveStream() }
 		adjustStreamViewAspect()
 
+		val feedback = ControllerFeedback(this)
+		controllerFeedback = feedback
 		if(Preferences(this).rumbleEnabled)
 		{
-			val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
+			// Rumble on the controller's motors, or the phone's when the controller has none.
 			viewModel.session.rumbleState.observe(this, Observer {
-				val amplitude = min(255, (it.left.toInt() + it.right.toInt()) / 2)
-				vibrator.cancel()
-				if(amplitude == 0)
-					return@Observer
-				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-					vibrator.vibrate(VibrationEffect.createOneShot(1000, amplitude))
-				else
-					vibrator.vibrate(1000)
+				feedback.rumble(it.left.toInt(), it.right.toInt())
 			})
 		}
+		viewModel.session.lightState.observe(this, Observer {
+			when(it)
+			{
+				is LedColorEvent -> feedback.setLightbar(it.red, it.green, it.blue)
+				is PlayerIndexEvent -> feedback.setPlayerIndex(it.playerIndex)
+				else -> {}
+			}
+		})
 	}
+
+	private var controllerFeedback: ControllerFeedback? = null
 
 	private var filterRenderer: VideoFilterRenderer? = null
 
@@ -379,6 +386,8 @@ class StreamActivity : AppCompatActivity()
 	{
 		super.onDestroy()
 		controlsJob?.cancel()
+		controllerFeedback?.close()
+		controllerFeedback = null
 		filterRenderer?.let {
 			// The session lives in the view model and may outlive this activity.
 			viewModel.session.setVideoSurface(null)

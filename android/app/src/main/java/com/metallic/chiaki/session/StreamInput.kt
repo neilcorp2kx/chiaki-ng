@@ -20,7 +20,8 @@ class StreamInput(val context: Context, val preferences: Preferences)
 
 		val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 		@Suppress("DEPRECATION")
-		when(windowManager.defaultDisplay.rotation)
+		// Controller motion is in the controller's own frame and does not turn with the screen.
+		if(!motionFromController) when(windowManager.defaultDisplay.rotation)
 		{
 			Surface.ROTATION_90 -> {
 				controllerState.accelX *= -1.0f
@@ -54,6 +55,53 @@ class StreamInput(val context: Context, val preferences: Preferences)
 		}
 
 	private val swapCrossMoon = preferences.swapCrossMoon
+
+	/** Motion comes from the game controller's sensors instead of the phone's */
+	private var motionFromController = false
+	private var controllerSensorManager: SensorManager? = null
+
+	private val controllerSensorListener = object: SensorEventListener {
+		override fun onSensorChanged(event: SensorEvent)
+		{
+			// Android reports controller sensors in the controller's axes, in m/s² and rad/s.
+			when(event.sensor.type)
+			{
+				Sensor.TYPE_ACCELEROMETER -> {
+					sensorControllerState.accelX = event.values[0] / SensorManager.GRAVITY_EARTH
+					sensorControllerState.accelY = event.values[1] / SensorManager.GRAVITY_EARTH
+					sensorControllerState.accelZ = event.values[2] / SensorManager.GRAVITY_EARTH
+				}
+				Sensor.TYPE_GYROSCOPE -> {
+					sensorControllerState.gyroX = event.values[0]
+					sensorControllerState.gyroY = event.values[1]
+					sensorControllerState.gyroZ = event.values[2]
+				}
+				else -> return
+			}
+			controllerStateUpdated()
+		}
+
+		override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
+	}
+
+	/** Registers the controller's gyro and accelerometer, returns false if it has none */
+	private fun registerControllerMotion(samplingPeriodUs: Int): Boolean
+	{
+		if(!preferences.controllerMotion || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S)
+			return false
+		val controller = InputDevice.getDeviceIds().toList()
+			.mapNotNull { InputDevice.getDevice(it) }
+			.firstOrNull { !it.isVirtual && (it.sources and InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD }
+			?: return false
+		val sensorManager = controller.sensorManager
+		val gyro = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) ?: return false
+		sensorManager.registerListener(controllerSensorListener, gyro, samplingPeriodUs)
+		sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let {
+			sensorManager.registerListener(controllerSensorListener, it, samplingPeriodUs)
+		}
+		controllerSensorManager = sensorManager
+		return true
+	}
 
 	private val sensorEventListener = object: SensorEventListener {
 		override fun onSensorChanged(event: SensorEvent)
@@ -91,6 +139,9 @@ class StreamInput(val context: Context, val preferences: Preferences)
 		fun onResume()
 		{
 			val samplingPeriodUs = 4000
+			motionFromController = registerControllerMotion(samplingPeriodUs)
+			if(motionFromController)
+				return
 			val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 			listOfNotNull(
 				sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
@@ -104,6 +155,9 @@ class StreamInput(val context: Context, val preferences: Preferences)
 		@OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
 		fun onPause()
 		{
+			controllerSensorManager?.unregisterListener(controllerSensorListener)
+			controllerSensorManager = null
+			motionFromController = false
 			val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 			sensorManager.unregisterListener(sensorEventListener)
 		}

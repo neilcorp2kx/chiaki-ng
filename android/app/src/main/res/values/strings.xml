@@ -90,6 +90,12 @@
     <string name="preferences_fps_title">FPS</string>
     <string name="preferences_bitrate_title">Bitrate</string>
     <string name="preferences_codec_title">Codec</string>
+    <string name="preferences_haptics_rumble_title">Haptics as Rumble</string>
+    <string name="preferences_haptics_rumble_weak">Weak</string>
+    <string name="preferences_haptics_rumble_normal">Normal</string>
+    <string name="preferences_haptics_rumble_strong">Strong</string>
+    <string name="preferences_controller_motion_title">Controller Motion</string>
+    <string name="preferences_controller_motion_summary">Use the controller\'s gyro and accelerometer when it has them, instead of the phone\'s</string>
     <string name="preferences_leave_action_title">When Leaving the Stream</string>
     <string name="preferences_leave_action_ask">Ask what to do</string>
     <string name="preferences_leave_action_rest">Put the console in rest mode</string>
@@ -132,7 +138,7 @@
     <string name="preferences_swap_cross_moon_title">Swap Cross/Moon and Box/Pyramid Buttons</string>
     <string name="preferences_swap_cross_moon_summary">Swap face buttons if default mapping is incorrect (e.g. for 8BitDo controllers)</string>
     <string name="preferences_rumble_enabled_title">Rumble</string>
-    <string name="preferences_rumble_enabled_summary">Use phone vibration motor for rumble</string>
+    <string name="preferences_rumble_enabled_summary">Vibrate the controller, or the phone if the controller has no motors</string>
     <string name="preferences_motion_enabled_title">Motion</string>
     <string name="preferences_motion_enabled_summary">Use device\'s motion sensors for controller motion</string>
     <string name="preferences_button_haptic_enabled_title">Touch Haptics</string>
@@ -164,6 +170,8 @@
     <string name="preferences_fps_key">stream_fps</string>
     <string name="preferences_bitrate_key">stream_bitrate</string>
     <string name="preferences_codec_key">stream_codec</string>
+    <string name="preferences_haptics_rumble_key">stream_haptics_rumble</string>
+    <string name="preferences_controller_motion_key">controller_motion</string>
     <string name="preferences_leave_action_key">stream_leave_action</string>
     <string name="preferences_keyboard_enabled_key">stream_keyboard_enabled</string>
     <string name="preferences_remote_resolution_key">stream_remote_resolution</string>
