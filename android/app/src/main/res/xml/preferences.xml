@@ -116,11 +116,6 @@
             app:key="@string/preferences_leave_action_key"
             app:title="@string/preferences_leave_action_title"
             app:summary="%s"/>
-
-        <SwitchPreference
-            app:key="@string/preferences_keyboard_enabled_key"
-            app:title="@string/preferences_keyboard_enabled_title"
-            app:summary="@string/preferences_keyboard_enabled_summary"/>
     </PreferenceCategory>
 
     <PreferenceCategory

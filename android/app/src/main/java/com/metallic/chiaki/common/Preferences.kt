@@ -247,8 +247,11 @@ class Preferences(context: Context)
 		set(value) { sharedPreferences.edit().putString(leaveActionKey, value.value).apply() }
 
 	val keyboardEnabledKey get() = resources.getString(R.string.preferences_keyboard_enabled_key)
+	// Not offered: enabling the keyboard (connect_info.enable_keyboard) made the PS5 drop the data
+	// connection right after login in a real test. The core marks its signature as unknown and the
+	// desktop GUI never enables it. Stays false until the core supports it.
 	var keyboardEnabled
-		get() = sharedPreferences.getBoolean(keyboardEnabledKey, false)
+		get() = false
 		set(value) { sharedPreferences.edit().putBoolean(keyboardEnabledKey, value).apply() }
 
 	val videoFilterStatsKey get() = resources.getString(R.string.preferences_video_filter_stats_key)
