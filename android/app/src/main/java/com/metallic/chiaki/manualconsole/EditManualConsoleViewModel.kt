@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.metallic.chiaki.common.AppDatabase
 import com.metallic.chiaki.common.ManualHost
 import com.metallic.chiaki.common.RegisteredHost
+import com.metallic.chiaki.common.RegistKeys
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -38,7 +39,8 @@ class EditManualConsoleViewModel(val database: AppDatabase, manualHostId: Long?)
 				try {
 					val result = database.manualHostDao().getByIdWithRegisteredHost(manualHostId)
 					withContext(Dispatchers.Main) {
-						selectedRegisteredHost.value = result.registeredHost
+						// The joined row has the keys sealed; match the opened ones of the list.
+						selectedRegisteredHost.value = result.registeredHost?.let { RegistKeys.open(it) }
 						liveData.value = result.manualHost
 					}
 				} catch(e: Exception) {

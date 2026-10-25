@@ -6,7 +6,10 @@ import androidx.room.*
 import androidx.room.ColumnInfo.Companion.BLOB
 import com.metallic.chiaki.lib.RegistHost
 import com.metallic.chiaki.lib.Target
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 @Entity(tableName = "registered_host")
 data class RegisteredHost(
@@ -75,24 +78,48 @@ data class RegisteredHost(
 	}
 }
 
+/**
+ * Registered consoles. Their Remote Play keys are sealed in the database (RegistKeys); the
+ * functions without "Sealed" in the name give and take plain keys.
+ */
 @Dao
-interface RegisteredHostDao
+abstract class RegisteredHostDao
 {
 	@Query("SELECT * FROM registered_host")
-	fun getAll(): Flow<List<RegisteredHost>>
+	abstract fun getAllSealed(): Flow<List<RegisteredHost>>
+
+	fun getAll(): Flow<List<RegisteredHost>> = getAllSealed().map { hosts -> hosts.mapNotNull { RegistKeys.open(it) } }
 
 	@Query("SELECT * FROM registered_host WHERE server_mac == :mac LIMIT 1")
-	suspend fun getByMac(mac: MacAddress): RegisteredHost?
+	abstract suspend fun getByMacSealed(mac: MacAddress): RegisteredHost?
+
+	suspend fun getByMac(mac: MacAddress): RegisteredHost? =
+		getByMacSealed(mac)?.let { withContext(Dispatchers.IO) { RegistKeys.open(it) } }
 
 	@Query("DELETE FROM registered_host WHERE server_mac == :mac")
-	suspend fun deleteByMac(mac: MacAddress)
+	abstract suspend fun deleteByMac(mac: MacAddress)
 
 	@Delete
-	suspend fun delete(host: RegisteredHost)
+	abstract suspend fun delete(host: RegisteredHost)
 
 	@Query("SELECT COUNT(*) FROM registered_host")
-	fun count(): Flow<Int>
+	abstract fun count(): Flow<Int>
 
 	@Insert
-	suspend fun insert(host: RegisteredHost): Long
+	abstract suspend fun insertSealed(host: RegisteredHost): Long
+
+	suspend fun insert(host: RegisteredHost): Long = insertSealed(withContext(Dispatchers.IO) { RegistKeys.seal(host) })
+
+	@Query("SELECT * FROM registered_host")
+	abstract suspend fun getAllSealedNow(): List<RegisteredHost>
+
+	@Update
+	abstract suspend fun updateSealed(host: RegisteredHost)
+
+	/** Seals keys stored in plain form by versions before the encryption */
+	suspend fun sealPlainKeys()
+	{
+		for(host in getAllSealedNow().filter { RegistKeys.hasPlainKeys(it) })
+			updateSealed(withContext(Dispatchers.IO) { RegistKeys.seal(host) })
+	}
 }

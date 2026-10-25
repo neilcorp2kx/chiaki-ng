@@ -20,6 +20,14 @@ import kotlinx.coroutines.launch
 
 class MainViewModel(val database: AppDatabase, val preferences: Preferences, val psnAccount: PsnAccount): ViewModel()
 {
+	init
+	{
+		viewModelScope.launch(Dispatchers.IO) {
+			try { database.registeredHostDao().sealPlainKeys() }
+			catch(e: Exception) { Log.w("MainViewModel", "Could not seal the stored Remote Play keys", e) }
+		}
+	}
+
 	private val psnDevices = MutableStateFlow<List<PsnDevice>>(emptyList())
 	private val _psnError = MutableLiveData<String?>(null)
 	/** Last error while listing the PSN consoles, null if none */

@@ -27,6 +27,13 @@ import com.metallic.chiaki.databinding.StreamOverlayCardsBinding
 import com.metallic.chiaki.lib.DiscoveryHost
 import com.metallic.chiaki.lib.PsnDevice
 import com.metallic.chiaki.lib.Target
+import android.util.Log
+import androidx.lifecycle.lifecycleScope
+import com.metallic.chiaki.common.getDatabase
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import android.content.Intent
 import com.metallic.chiaki.common.Preferences
 import com.metallic.chiaki.lib.ConnectInfo
@@ -50,6 +57,12 @@ class ThemePreviewActivity: AppCompatActivity()
 		val style = AppStyle.fromValue(intent.getStringExtra("look") ?: AppStyle.CONSOLE_HOME.value)
 			.let { if(it.isClassic) AppStyle.CONSOLE_HOME else it }
 		val screen = intent.getStringExtra("screen") ?: "home"
+		if(screen == "keystest")
+		{
+			super.onCreate(savedInstanceState)
+			runKeysTest()
+			return
+		}
 		if(screen == "settings" || screen == "regist" || screen == "manual")
 		{
 			// The real screens, in the look stored in the preferences
@@ -189,6 +202,55 @@ class ThemePreviewActivity: AppCompatActivity()
 			handler.postDelayed({ StreamLook.animateCardsIn(cards) }, 400)
 		edge.struggling = intent.getBooleanExtra("struggling", false)
 		overlay.root.visibility = View.VISIBLE
+	}
+
+	/**
+	 * Remote Play keys at rest: a console stored the old way (plain keys) is sealed by
+	 * sealPlainKeys and still opens to the same keys; new consoles are stored sealed.
+	 */
+	private fun runKeysTest()
+	{
+		val text = TextView(this).apply { setTextColor(Color.WHITE); textSize = 16f; setPadding(48, 96, 48, 48) }
+		setContentView(text)
+		lifecycleScope.launch(Dispatchers.IO) {
+			val result = try
+			{
+				val dao = getDatabase(this@ThemePreviewActivity).registeredHostDao()
+				val mac = MacAddress(0x00ABCDEF0123L)
+				dao.deleteByMac(mac)
+				val plainRegist = ByteArray(16) { it.toByte() }
+				val plainKey = ByteArray(16) { (it + 100).toByte() }
+				val host = RegisteredHost(target = Target.PS5_1, apSsid = null, apBssid = null, apKey = null, apName = null,
+					serverMac = mac, serverNickname = "Key test", rpRegistKey = plainRegist, rpKeyType = 0, rpKey = plainKey)
+				dao.insertSealed(host) // as older versions stored it
+				val legacy = dao.getByMacSealed(mac)!!
+				dao.sealPlainKeys()
+				val sealed = dao.getByMacSealed(mac)!!
+				val opened = dao.getByMac(mac)!!
+				val listed = dao.getAll().first().first { it.serverMac == mac }
+				dao.deleteByMac(mac)
+				dao.insert(host)
+				val newSealed = dao.getByMacSealed(mac)!!
+				val newOpened = dao.getByMac(mac)!!
+				dao.deleteByMac(mac)
+				val checks = listOf(
+					"legacy row is plain" to (legacy.rpRegistKey.size == 16 && legacy.rpKey.size == 16),
+					"upgrade sealed both keys" to (sealed.rpRegistKey.size > 16 && sealed.rpKey.size > 16 &&
+						!sealed.rpRegistKey.contentEquals(plainRegist)),
+					"sealed keys open to the same keys" to (opened.rpRegistKey.contentEquals(plainRegist) && opened.rpKey.contentEquals(plainKey)),
+					"list gives plain keys" to (listed.rpRegistKey.contentEquals(plainRegist) && listed.rpKey.contentEquals(plainKey)),
+					"new console stored sealed" to (newSealed.rpRegistKey.size > 16 && newSealed.rpKey.size > 16),
+					"new console opens" to (newOpened.rpRegistKey.contentEquals(plainRegist) && newOpened.rpKey.contentEquals(plainKey)))
+				checks.joinToString("\n") { (name, ok) -> "${if(ok) "PASS" else "FAIL"} $name" } +
+					"\nKEYS TEST ${if(checks.all { it.second }) "PASSED" else "FAILED"}"
+			}
+			catch(e: Exception)
+			{
+				"KEYS TEST FAILED: $e"
+			}
+			Log.i("KeysTest", result.replace("\n", " | "))
+			withContext(Dispatchers.Main) { text.text = result }
+		}
 	}
 
 	override fun onDestroy()
